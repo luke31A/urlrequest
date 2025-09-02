@@ -11,11 +11,11 @@ from main import (
 st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
 st.title("Workday Tenant URL Finder")
 
-st.write("Paste a Workday tenant ID. The app probes known data centers and shows matching URLs.")
+st.write("Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. Please note, you must know the actual tenant id for the tool to work, this is usually the name of the company with no spaces, but not always.")
 
 tenant_id = st.text_input("Tenant ID")
 
-max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=20, step=1)
+max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
 
 if st.button("Find URLs") and tenant_id:
     with st.spinner("Checking data centers..."):
