@@ -153,4 +153,88 @@ st.info(
 # -------------------------------------------------
 with st.form(key="search_form", clear_on_submit=False):
     current_prefill = st.session_state.prefill
-    tenant_id = st.text_input("Tenant ID", value=
+    tenant_id = st.text_input("Tenant ID", value=current_prefill)
+    max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
+    submitted = st.form_submit_button("Find URLs")
+
+# Clear prefill after form renders
+if not st.session_state.run_from_history:
+    st.session_state.prefill = ""
+
+# Handle history click
+if st.session_state.run_from_history:
+    submitted = True
+    tenant_id = current_prefill
+    st.session_state.run_from_history = False
+
+# -------------------------------------------------
+# Main search logic
+# -------------------------------------------------
+if submitted:
+    if not tenant_id:
+        st.warning("Enter a tenant ID first.")
+        st.stop()
+
+    # Add to history (initially as failed, will update if successful)
+    st.session_state.search_history[tenant_id] = False
+
+    with st.spinner("Checking data centers..."):
+        data_center, production_url = find_production_url(tenant_id)
+
+    if not production_url:
+        st.error("No Production URL found.")
+        st.stop()
+
+    # Mark as successful
+    st.session_state.search_history[tenant_id] = True
+    
+    # Keep only last 10 searches
+    if len(st.session_state.search_history) > 10:
+        oldest_key = next(iter(st.session_state.search_history))
+        del st.session_state.search_history[oldest_key]
+
+    st.subheader(f"Results for: {tenant_id}")
+    st.metric(label="Data Center", value=data_center)
+
+    st.subheader("Core URLs")
+    show_link("Production", production_url, key="prod")
+
+    sandbox_template = find_sandbox_url(data_center, tenant_id)
+    
+    all_urls = [f"Production: {production_url}"]
+
+    if sandbox_template:
+        sandbox_url = sandbox_template.format(id=tenant_id)
+        preview_url = find_preview_url(sandbox_template).format(id=tenant_id)
+        cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
+
+        show_link("Sandbox", sandbox_url, key="sb")
+        show_link("Preview", preview_url, key="pv")
+        show_link("Customer Central", cc_url, key="cc")
+
+        all_urls.extend([
+            f"Sandbox: {sandbox_url}",
+            f"Preview: {preview_url}",
+            f"Customer Central: {cc_url}"
+        ])
+
+        with st.spinner("Scanning IMPL tenants..."):
+            impls = find_implementation_tenants(sandbox_template, tenant_id, max_impl=max_impl)
+
+        st.subheader("Implementation Tenants")
+        if impls:
+            for idx, (label, url) in enumerate(impls):
+                # Normalize label and reuse the same renderer so each line has a copy button
+                clean_label = label.strip(" :")
+                show_link(clean_label, url, key=f"impl_{idx}")
+                all_urls.append(f"{clean_label}: {url}")
+        else:
+            st.text("No implementation tenants found.")
+            
+        # All URLs summary
+        st.subheader("All URLs Summary")
+        all_urls_text = "\n".join(all_urls)
+        st.code(all_urls_text, language=None)
+        
+    else:
+        st.warning("No Sandbox URL found for this Data Center.")
