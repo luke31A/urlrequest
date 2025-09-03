@@ -192,13 +192,7 @@ if submitted:
         data_center, production_url = find_production_url(tenant_id)
 
     if not production_url:
-    st.markdown(
-        f"<div style='display:flex;align-items:center;gap:8px; margin:6px 0'>"
-        f"{status_icon_html(False)}"
-        f"<strong>No Production URL found.</strong>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
+    st.error("No Production URL found.")
     st.stop()
 
     # Mark as successful
