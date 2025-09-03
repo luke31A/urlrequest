@@ -5,7 +5,18 @@ import streamlit as st
 from pathlib import Path
 import base64
 
-st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
+st.markdown(
+    """
+    <style>
+      .logo { position: absolute; top: 10px; left: 10px; width: 120px; z-index: 1000; }
+    </style>
+    <img class="logo" src="commitlogo.png">
+    """,
+    unsafe_allow_html=True
+)
+
+
+st.set_page_config(page_title="Workday URL Finder", page_icon="😁")
 
 
 
