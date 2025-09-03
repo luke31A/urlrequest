@@ -34,7 +34,7 @@ st.markdown(
     <div class="topbar">
       <div class="topbar-row">
         <img src="data:image/png;base64,{data}" alt="Commit logo">
-        <h1>test</h1>
+        <h1>Workday Tenant URL Finder</h1>
       </div>
     </div>
     """,
