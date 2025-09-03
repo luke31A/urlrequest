@@ -1,25 +1,30 @@
-
-import streamlit as st
-
 import streamlit as st
 from pathlib import Path
 import base64
 
+st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
+
+# Read logo file and encode to base64
 logo_path = Path(__file__).with_name("CommitLogo.png")
 data = base64.b64encode(logo_path.read_bytes()).decode()
 
+# Inject logo + extra padding so title/content clears the logo
 st.markdown(
     f"""
     <style>
-    .logo-fixed {{
+      .logo-fixed {{
         position: absolute;
         top: 10px;
         left: 10px;
         z-index: 1000;
-    }}
-    .logo-fixed img {{
+      }}
+      .logo-fixed img {{
         width: 120px;
-    }}
+      }}
+      /* Pushes the app content down so it doesn't overlap the logo */
+      .block-container {{
+        padding-top: 140px !important;
+      }}
     </style>
     <div class="logo-fixed">
         <img src="data:image/png;base64,{data}">
@@ -28,25 +33,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-st.set_page_config(page_title="Workday URL Finder", page_icon="😁")
-
-
-
-
-from main import (
-    find_production_url,
-    find_sandbox_url,
-    find_preview_url,
-    find_cc_url,
-    find_implementation_tenants,
-)
-
-st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
 st.title("Workday Tenant URL Finder")
-
-st.write("Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. Please note, you must know the actual tenant id for the tool to work, this is usually the name of the company with no spaces, but not always.")
-
+st.write(
+    "Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. "
+    "Please note, you must know the actual tenant id for the tool to work, this is usually the "
+    "name of the company with no spaces, but not always."
+)
 tenant_id = st.text_input("Tenant ID")
 
 max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
