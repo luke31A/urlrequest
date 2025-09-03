@@ -2,11 +2,12 @@ import streamlit as st
 from pathlib import Path
 import base64
 
-st.set_page_config(page_icon="🌐")
-st.title("Workday Tenant URL Finder")
+st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="🌐")
 
+# Encode logo
 data = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
 
+# Sticky top bar with logo + title side by side
 st.markdown(
     f"""
     <style>
@@ -14,7 +15,7 @@ st.markdown(
         position: sticky;
         top: 0;
         z-index: 1000;
-        background: white;         /* match your theme background */
+        background: white;
         padding: 10px 12px 6px 12px;
         border-bottom: 1px solid #eee;
       }}
@@ -26,22 +27,21 @@ st.markdown(
       .topbar img {{ width: 110px; display: block; }}
       .topbar h1 {{
         margin: 0;
-        font-size: 1.8rem;         /* tune as you like */
+        font-size: 1.8rem;
         line-height: 1.2;
       }}
     </style>
     <div class="topbar">
       <div class="topbar-row">
         <img src="data:image/png;base64,{data}" alt="Commit logo">
-        <h1></h1>
+        <h1>Workday Tenant URL Finder</h1>
       </div>
     </div>
     """,
     unsafe_allow_html=True
 )
 
-# You can remove a separate st.title() now since the topbar has the title.
-# === Page content starts here ===
+# No st.title() here, since the top bar already has it
 st.write(
     "Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. "
     "Please note, you must know the actual tenant id for the tool to work, this is usually the "
