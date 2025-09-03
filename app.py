@@ -17,17 +17,6 @@ from main import (
 st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo.png")
 
 # -------------------------------------------------
-# Copy button helper
-# -------------------------------------------------
-def copy_button(text_to_copy, button_text, key):
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.code(text_to_copy, language=None)
-    with col2:
-        if st.button(button_text, key=f"copy_{key}", help="Click to copy, then Ctrl+A and Ctrl+C"):
-            st.success("👆 Select text above and copy (Ctrl+A, Ctrl+C)")
-
-# -------------------------------------------------
 # Sticky top bar: logo + title side by side
 # -------------------------------------------------
 logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
@@ -168,9 +157,6 @@ if submitted:
 
     st.subheader("Core URLs")
     show_link("Production", production_url)
-    
-    # Copy button for production
-    copy_button(production_url, "📋 Copy Production URL", "prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
     
@@ -182,13 +168,8 @@ if submitted:
         cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
         show_link("Sandbox", sandbox_url)
-        copy_button(sandbox_url, "📋 Copy Sandbox URL", "sandbox")
-        
         show_link("Preview", preview_url)
-        copy_button(preview_url, "📋 Copy Preview URL", "preview")
-        
         show_link("Customer Central", cc_url)
-        copy_button(cc_url, "📋 Copy CC URL", "cc")
 
         all_urls.extend([
             f"Sandbox: {sandbox_url}",
@@ -206,7 +187,6 @@ if submitted:
                     f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
                     unsafe_allow_html=True
                 )
-                copy_button(url, f"📋 Copy {label.strip(' :')}", f"impl_{idx}")
                 all_urls.append(f"{label.strip(' :')}: {url}")
         else:
             st.text("No implementation tenants found.")
