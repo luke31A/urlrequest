@@ -62,16 +62,23 @@ st.markdown(
 def show_link(label: str, url: str, key: str):
     """
     Renders a labeled, clickable URL with an inline copy-to-clipboard button.
-    Implemented with components.html so client-side JS runs reliably.
+    Uses components.html so client-side JS runs reliably, but keeps Streamlit font styling.
     """
-    # Use json.dumps so the URL is safely embedded as a JS string literal
-    js_url = json.dumps(url)
+    js_url = json.dumps(url)  # safe for embedding in JS string
     components.html(
         f"""
-        <div style="display:flex;align-items:center;gap:8px;margin:2px 0;flex-wrap:wrap;">
-          <span><strong>{label} URL:</strong> <a href={js_url} target="_blank" rel="noopener">{url}</a></span>
+        <div style="display:flex;align-items:center;gap:8px;margin:2px 0;flex-wrap:wrap;
+                    font-family: var(--font, 'Source Sans Pro', sans-serif);
+                    font-size: 1rem; line-height: 1.4;">
+          <span><strong>{label} URL:</strong> 
+            <a href={js_url} target="_blank" rel="noopener" 
+               style="color: var(--link-color, #0366d6); text-decoration: none;">
+               {url}
+            </a>
+          </span>
           <button id="copy_{key}"
-                  style="padding:2px 6px;cursor:pointer;border:1px solid #ddd;border-radius:6px;background:#f9f9f9;">
+                  style="padding:2px 6px;cursor:pointer;border:1px solid #ddd;
+                         border-radius:6px;background:#f9f9f9;font-size:0.9rem;">
             📋
           </button>
         </div>
@@ -92,8 +99,9 @@ def show_link(label: str, url: str, key: str):
           }}
         </script>
         """,
-        height=44,  # enough space for the row
+        height=44,
     )
+
 
 # -------------------------------------------------
 # Session state - Simple format
