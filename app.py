@@ -18,9 +18,7 @@ st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo
 # -------------------------------------------------
 # Sticky top bar: logo + title side by side
 # -------------------------------------------------
-# Make sure the filename + case matches exactly
 logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
-
 st.markdown(
     f"""
     <style>
@@ -60,28 +58,22 @@ st.markdown(
 # Session state
 # -------------------------------------------------
 if "history" not in st.session_state:
-    st.session_state.history = []           # list[str] recent tenant IDs
+    st.session_state.history = []     # list[str]
 if "prefill" not in st.session_state:
-    st.session_state.prefill = ""           # prefill value for the input
-if "run_from_history" not in st.session_state:
-    st.session_state.run_from_history = False
+    st.session_state.prefill = ""     # value used to prefill the input
 
 # -------------------------------------------------
-# Sidebar: recent searches
+# Sidebar: recent searches (prefill only)
 # -------------------------------------------------
 with st.sidebar:
     st.subheader("Recent")
     if st.session_state.history:
-        # newest first
-        for t in reversed(st.session_state.history):
+        for t in reversed(st.session_state.history):  # newest first
             if st.button(t, key=f"hist-{t}", use_container_width=True):
-                # set prefill and flag to auto-run once
-                st.session_state.prefill = t
-                st.session_state.run_from_history = True
+                st.session_state.prefill = t  # just prefill; user must press Enter
         if st.button("Clear history", type="secondary", use_container_width=True):
             st.session_state.history = []
             st.session_state.prefill = ""
-            st.session_state.run_from_history = False
     else:
         st.caption("No recent searches yet")
 
@@ -99,26 +91,22 @@ st.info(
 with st.form(key="search_form", clear_on_submit=False):
     tenant_id = st.text_input("Tenant ID", value=st.session_state.prefill)
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
-    submitted = st.form_submit_button("Find URLs")
-
-# If a history item was clicked, auto-run once with that value
-if st.session_state.run_from_history:
-    submitted = True
-    tenant_id = st.session_state.prefill
-    st.session_state.run_from_history = False  # consume the flag
+    submitted = st.form_submit_button("Find URLs")  # Enter triggers this
 
 # -------------------------------------------------
-# Action
+# Action (runs only on submit)
 # -------------------------------------------------
 if submitted:
     if not tenant_id:
         st.warning("Enter a tenant ID first.")
         st.stop()
 
-    # Record history (dedupe, keep last 10)
-    if tenant_id not in st.session_state.history:
-        st.session_state.history.append(tenant_id)
-        st.session_state.history = st.session_state.history[-10:]
+    # Update history: move to end if already present, keep last 10
+    if tenant_id in st.session_state.history:
+        st.session_state.history.remove(tenant_id)
+    st.session_state.history.append(tenant_id)
+    st.session_state.history = st.session_state.history[-10:]
+    st.session_state.prefill = tenant_id  # keep it in the box for convenience
 
     with st.spinner("Checking data centers..."):
         data_center, production_url = find_production_url(tenant_id)
@@ -132,10 +120,9 @@ if submitted:
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
 
-    urls_core = []  # (label, url) core set
-    urls_impl = []  # (label, url) impl tenants
+    urls_core = []  # (label, url)
+    urls_impl = []  # (label, url)
 
-    # Core URLs
     if sandbox_template:
         sx = sandbox_template.format(id=tenant_id)
         pv = find_preview_url(sandbox_template).format(id=tenant_id)
@@ -163,12 +150,9 @@ if submitted:
                 urls_impl.append((label.strip(" :"), url))
         else:
             st.write("No implementation tenants found.")
-            urls_impl = []
     else:
         st.warning("No Sandbox URL found for this Data Center.")
         urls_core.append(("Production", production_url))
-        impls = []
-        urls_impl = []
 
     # -------------------------------------------------
     # Slack-ready message with copy button
