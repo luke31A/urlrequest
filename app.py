@@ -10,15 +10,17 @@ from main import (
     find_implementation_tenants,
 )
 
-# --------------------------------------------
+# -------------------------------------------------
 # Page config
-# --------------------------------------------
+# -------------------------------------------------
 st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo.png")
 
-# --------------------------------------------
-# Sticky top bar: logo + title
-# --------------------------------------------
+# -------------------------------------------------
+# Sticky top bar: logo + title side by side
+# -------------------------------------------------
+# Make sure the filename + case matches exactly
 logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
+
 st.markdown(
     f"""
     <style>
@@ -54,51 +56,60 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --------------------------------------------
-# Session state: recent history
-# --------------------------------------------
+# -------------------------------------------------
+# Session state
+# -------------------------------------------------
 if "history" not in st.session_state:
-    st.session_state.history = []          # list[str] of tenant IDs
+    st.session_state.history = []           # list[str] recent tenant IDs
 if "prefill" not in st.session_state:
-    st.session_state.prefill = ""          # prefill value for the input
+    st.session_state.prefill = ""           # prefill value for the input
+if "run_from_history" not in st.session_state:
+    st.session_state.run_from_history = False
 
-# --------------------------------------------
+# -------------------------------------------------
 # Sidebar: recent searches
-# --------------------------------------------
+# -------------------------------------------------
 with st.sidebar:
     st.subheader("Recent")
     if st.session_state.history:
         # newest first
         for t in reversed(st.session_state.history):
             if st.button(t, key=f"hist-{t}", use_container_width=True):
+                # set prefill and flag to auto-run once
                 st.session_state.prefill = t
-                st.experimental_rerun()
+                st.session_state.run_from_history = True
         if st.button("Clear history", type="secondary", use_container_width=True):
             st.session_state.history = []
             st.session_state.prefill = ""
-            st.experimental_rerun()
+            st.session_state.run_from_history = False
     else:
         st.caption("No recent searches yet")
 
-# --------------------------------------------
+# -------------------------------------------------
 # Helper text
-# --------------------------------------------
+# -------------------------------------------------
 st.info(
     "Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. "
     "You must know the actual tenant id for the tool to work. Often the company name with no spaces, but not always."
 )
 
-# --------------------------------------------
-# Input form: pressing Enter submits
-# --------------------------------------------
+# -------------------------------------------------
+# Input form: pressing Enter submits the form
+# -------------------------------------------------
 with st.form(key="search_form", clear_on_submit=False):
     tenant_id = st.text_input("Tenant ID", value=st.session_state.prefill)
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
     submitted = st.form_submit_button("Find URLs")
 
-# --------------------------------------------
+# If a history item was clicked, auto-run once with that value
+if st.session_state.run_from_history:
+    submitted = True
+    tenant_id = st.session_state.prefill
+    st.session_state.run_from_history = False  # consume the flag
+
+# -------------------------------------------------
 # Action
-# --------------------------------------------
+# -------------------------------------------------
 if submitted:
     if not tenant_id:
         st.warning("Enter a tenant ID first.")
@@ -121,8 +132,8 @@ if submitted:
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
 
-    urls_core = []  # list of (label, url) for Slack formatting
-    urls_impl = []  # list of (label, url)
+    urls_core = []  # (label, url) core set
+    urls_impl = []  # (label, url) impl tenants
 
     # Core URLs
     if sandbox_template:
@@ -159,9 +170,9 @@ if submitted:
         impls = []
         urls_impl = []
 
-    # ----------------------------------------
-    # Slack-ready message with one-click copy
-    # ----------------------------------------
+    # -------------------------------------------------
+    # Slack-ready message with copy button
+    # -------------------------------------------------
     lines = [f"*Workday URLs for `{tenant_id}`*"]
     for label, url in urls_core:
         lines.append(f"• *{label}:* <{url}>")
@@ -175,9 +186,8 @@ if submitted:
 
     st.subheader("Share to Slack")
     st.caption("Use the copy icon to copy the formatted message")
-    st.code(slack_message, language=None)  # Streamlit shows a copy button here
+    st.code(slack_message, language=None)
 
-    # Optional: also offer a text download
     st.download_button(
         "Download as .txt",
         data=slack_message,
