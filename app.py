@@ -7,30 +7,7 @@ import base64
 
 st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
 
-# Read logo bytes
-logo_path = Path(__file__).with_name("commitlogo.png")  # file next to app.py
-data = base64.b64encode(logo_path.read_bytes()).decode()
 
-# Pin to top-left
-st.markdown(
-    f"""
-    <style>
-      .logo-fixed {{
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 1000;
-      }}
-      .logo-fixed img {{
-        width: 120px;
-      }}
-    </style>
-    <div class="logo-fixed">
-      <img src="data:image/png;base64,{data}">
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 
 
 from main import (
