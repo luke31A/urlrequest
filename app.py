@@ -78,7 +78,7 @@ def show_link(label: str, url: str, key: str):
           </span>
           <button id="copy_{key}"
                   style="padding:2px 6px;cursor:pointer;border:1px solid #ddd;
-                         border-radius:6px;background:#f9f9f9;font-size:0.9rem;">
+                         border-radius:6px;background:#f9f9f9;font-size:0.7rem;">
             📋
           </button>
         </div>
