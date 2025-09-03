@@ -61,6 +61,42 @@ st.markdown(
         font-size: 1rem;
         color: #444;
       }}
+
+      /* Progress bar styles */
+      .progress-wrap {{
+        margin: 8px 0 20px 0;
+      }}
+      .progress-label {{
+        font-size: 0.95rem;
+        color: #444;
+        margin-bottom: 6px;
+        text-align: center;
+      }}
+      .progress {{
+        width: 100%;
+        height: 10px;
+        background: #eee;
+        border-radius: 6px;
+        overflow: hidden;
+      }}
+      .progress-bar {{
+        height: 100%;
+        width: 40%;
+        background: linear-gradient(90deg, #0d6efd, #66b2ff);
+        border-radius: 6px;
+        animation: indeterminate 1.2s infinite;
+      }}
+      @keyframes indeterminate {{
+        0%   {{ transform: translateX(-100%); width: 40%; }}
+        50%  {{ transform: translateX(25%);  width: 50%; }}
+        100% {{ transform: translateX(100%); width: 40%; }}
+      }}
+      .progress-complete {{
+        height: 100%;
+        width: 100%;
+        background: #22c55e; /* green */
+        border-radius: 6px;
+      }}
     </style>
     <div class="topbar">
       <div class="topbar-row">
@@ -128,6 +164,34 @@ def show_spinner(message: str):
         unsafe_allow_html=True,
     )
 
+def show_indeterminate_progress(placeholder, label_text: str):
+    """Render an animated indeterminate progress bar inside a placeholder."""
+    placeholder.markdown(
+        f"""
+        <div class="progress-wrap">
+          <div class="progress-label">{label_text}</div>
+          <div class="progress">
+            <div class="progress-bar"></div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+def show_progress_complete(placeholder, label_text: str):
+    """Replace the animated bar with a full green bar."""
+    placeholder.markdown(
+        f"""
+        <div class="progress-wrap">
+          <div class="progress-label">{label_text}</div>
+          <div class="progress">
+            <div class="progress-complete"></div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 # -------------------------------------------------
 # Session state - Simple format
 # -------------------------------------------------
@@ -145,6 +209,7 @@ with st.sidebar:
     st.subheader("Recent Searches")
     if st.session_state.search_history:
         for tenant_id, was_successful in reversed(list(st.session_state.search_history.items())):
+            # Color coding
             if was_successful:
                 button_label = f"🟢 {tenant_id}"
             else:
@@ -180,9 +245,11 @@ with st.form(key="search_form", clear_on_submit=False):
     st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     submitted = st.form_submit_button("Find URLs")
 
+# Clear prefill after form renders
 if not st.session_state.run_from_history:
     st.session_state.prefill = ""
 
+# Handle history click
 if st.session_state.run_from_history:
     submitted = True
     tenant_id = current_prefill
@@ -196,22 +263,27 @@ if submitted:
         st.warning("Enter a tenant ID first.")
         st.stop()
 
+    # Add to history (initially as failed, will update if successful)
     st.session_state.search_history[tenant_id] = False
 
-    placeholder = st.empty()
-    with placeholder.container():
+    # Custom spinner for production lookup
+    prod_placeholder = st.empty()
+    with prod_placeholder.container():
         show_spinner("Checking data centers...")
 
     data_center, production_url = find_production_url(tenant_id)
-    placeholder.empty()
+    prod_placeholder.empty()
 
     if not production_url:
         st.error("No Production URL found.")
+        # Angry Pikachu at bottom
         st.image("pika_angry.png", width=150)
         st.stop()
 
+    # Mark as successful
     st.session_state.search_history[tenant_id] = True
     
+    # Keep only last 10 searches
     if len(st.session_state.search_history) > 10:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
@@ -223,6 +295,7 @@ if submitted:
     show_link("Production", production_url, key="prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
+    
     all_urls = [f"Production: {production_url}"]
 
     if sandbox_template:
@@ -240,12 +313,14 @@ if submitted:
             f"Customer Central: {cc_url}"
         ])
 
-        placeholder = st.empty()
-        with placeholder.container():
-            show_spinner("Scanning IMPL tenants...")
+        # Indeterminate progress while scanning IMPL tenants
+        impl_progress_ph = st.empty()
+        show_indeterminate_progress(impl_progress_ph, "Scanning IMPL tenants...")
 
         impls = find_implementation_tenants(sandbox_template, tenant_id, max_impl=max_impl)
-        placeholder.empty()
+
+        # Flip to completed bar
+        show_progress_complete(impl_progress_ph, "Scanning IMPL tenants... done")
 
         st.subheader("Implementation Tenants")
         if impls:
@@ -256,6 +331,7 @@ if submitted:
         else:
             st.text("No implementation tenants found.")
             
+        # All URLs summary
         st.subheader("All URLs Summary")
         all_urls_text = "\n".join(all_urls)
         st.code(all_urls_text, language=None)
@@ -263,4 +339,5 @@ if submitted:
     else:
         st.warning("No Sandbox URL found for this Data Center.")
     
+    # Happy Pikachu at bottom on success
     st.image("pikachu_happy.png", width=150)
