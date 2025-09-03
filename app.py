@@ -13,7 +13,7 @@ from main import (
 # -------------------------------------------------
 # Page config
 # -------------------------------------------------
-st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="🌐")
+st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo.png")
 
 # -------------------------------------------------
 # Sticky top bar: logo + title side by side
