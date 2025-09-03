@@ -211,10 +211,10 @@ if submitted:
         else:
             st.text("No implementation tenants found.")
             
-        # Copy all URLs
-        st.subheader("Copy All URLs")
+        # All URLs summary
+        st.subheader("All URLs Summary")
         all_urls_text = "\n".join(all_urls)
-        st.text_area("Copy All URLs:", value=all_urls_text, height=150, key="all_urls_input", help="Select all (Ctrl+A) and copy (Ctrl+C)")
+        st.code(all_urls_text, language=None)
         
     else:
         st.warning("No Sandbox URL found for this Data Center.")
