@@ -193,26 +193,4 @@ if submitted:
     else:
         st.warning("No Sandbox URL found for this Data Center.")
 
-    # -------------------------------------------------
-    # Slack-ready message with reliable copy
-    # -------------------------------------------------
-    lines = [f"*Workday URLs for `{tenant_id}`*"]
-    for label, url in urls_core:
-        lines.append(f"• *{label}:* <{url}>")
-    if urls_impl:
-        lines.append("*Implementation Tenants*")
-        for label, url in urls_impl:
-            lines.append(f"• *{label}:* <{url}>")
-    slack_message = "\n".join(lines)
-
-    st.subheader("Share to Slack")
-    st.caption("Review or tweak, then click Copy")
-    st.text_area("Slack message", slack_message, height=220, key="slack_text_area")
-    copy_to_clipboard_button("Copy to clipboard", st.session_state.slack_text_area, key="copy-slack")
-
-    st.download_button(
-        "Download as .txt",
-        data=st.session_state.slack_text_area,
-        file_name=f"workday_urls_{tenant_id}.txt",
-        mime="text/plain",
-    )
+ 
