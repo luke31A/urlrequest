@@ -17,6 +17,38 @@ from main import (
 st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo.png")
 
 # -------------------------------------------------
+# Copy button helper
+# -------------------------------------------------
+def copy_button(text_to_copy, button_text, key):
+    button_id = f"copy_btn_{key}"
+    st.markdown(f"""
+    <script>
+    function copy_{key}() {{
+        navigator.clipboard.writeText(`{text_to_copy}`).then(() => {{
+            const btn = document.getElementById('{button_id}');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '✅ Copied!';
+            btn.style.backgroundColor = '#28a745';
+            setTimeout(() => {{ btn.innerHTML = orig; btn.style.backgroundColor = '#ff4b4b'; }}, 1500);
+        }}).catch(() => {{
+            const textArea = document.createElement('textarea');
+            textArea.value = `{text_to_copy}`;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            const btn = document.getElementById('{button_id}');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '✅ Copied!';
+            btn.style.backgroundColor = '#28a745';
+            setTimeout(() => {{ btn.innerHTML = orig; btn.style.backgroundColor = '#ff4b4b'; }}, 1500);
+        }});
+    }}
+    </script>
+    <button id="{button_id}" onclick="copy_{key}()" style="background:#ff4b4b;color:white;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;margin:5px 0;">{button_text}</button>
+    """, unsafe_allow_html=True)
+
+# -------------------------------------------------
 # Sticky top bar: logo + title side by side
 # -------------------------------------------------
 logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
@@ -158,10 +190,8 @@ if submitted:
     st.subheader("Core URLs")
     show_link("Production", production_url)
     
-    # Simple copy button for production
-    if st.button("📋 Copy Production URL", key="copy_prod"):
-        st.code(production_url)
-        st.success("✅ URL shown above - select and copy")
+    # Copy button for production
+    copy_button(production_url, "📋 Copy Production URL", "prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
     
@@ -173,19 +203,13 @@ if submitted:
         cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
         show_link("Sandbox", sandbox_url)
-        if st.button("📋 Copy Sandbox URL", key="copy_sandbox"):
-            st.code(sandbox_url)
-            st.success("✅ URL shown above - select and copy")
+        copy_button(sandbox_url, "📋 Copy Sandbox URL", "sandbox")
         
         show_link("Preview", preview_url)
-        if st.button("📋 Copy Preview URL", key="copy_preview"):
-            st.code(preview_url)
-            st.success("✅ URL shown above - select and copy")
+        copy_button(preview_url, "📋 Copy Preview URL", "preview")
         
         show_link("Customer Central", cc_url)
-        if st.button("📋 Copy CC URL", key="copy_cc"):
-            st.code(cc_url)
-            st.success("✅ URL shown above - select and copy")
+        copy_button(cc_url, "📋 Copy CC URL", "cc")
 
         all_urls.extend([
             f"Sandbox: {sandbox_url}",
@@ -203,19 +227,15 @@ if submitted:
                     f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
                     unsafe_allow_html=True
                 )
-                if st.button(f"📋 Copy {label.strip(' :')}", key=f"copy_impl_{idx}"):
-                    st.code(url)
-                    st.success("✅ URL shown above - select and copy")
+                copy_button(url, f"📋 Copy {label.strip(' :')}", f"impl_{idx}")
                 all_urls.append(f"{label.strip(' :')}: {url}")
         else:
             st.text("No implementation tenants found.")
             
         # Copy all URLs
         st.subheader("Copy All URLs")
-        if st.button("📋 Copy All URLs", key="copy_all"):
-            all_urls_text = "\n".join(all_urls)
-            st.code(all_urls_text)
-            st.success("✅ All URLs shown above - select and copy")
+        all_urls_text = "\n".join(all_urls)
+        copy_button(all_urls_text, "📋 Copy All URLs", "all")
         
     else:
         st.warning("No Sandbox URL found for this Data Center.")
