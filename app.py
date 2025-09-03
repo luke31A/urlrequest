@@ -162,8 +162,12 @@ if submitted:
     st.metric(label="Data Center", value=data_center)
 
     st.subheader("Core URLs")
-    show_link("Production", production_url)
-    copy_to_clipboard_button("Copy Production URL", production_url, key="copy_prod")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        show_link("Production", production_url)
+    with col2:
+        copy_to_clipboard_button("Copy", production_url, key="copy_prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
 
@@ -175,14 +179,23 @@ if submitted:
         preview_url = find_preview_url(sandbox_template).format(id=tenant_id)
         cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
-        show_link("Sandbox", sandbox_url)
-        copy_to_clipboard_button("Copy Sandbox URL", sandbox_url, key="copy_sandbox")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            show_link("Sandbox", sandbox_url)
+        with col2:
+            copy_to_clipboard_button("Copy", sandbox_url, key="copy_sandbox")
         
-        show_link("Preview", preview_url)
-        copy_to_clipboard_button("Copy Preview URL", preview_url, key="copy_preview")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            show_link("Preview", preview_url)
+        with col2:
+            copy_to_clipboard_button("Copy", preview_url, key="copy_preview")
         
-        show_link("Customer Central", cc_url)
-        copy_to_clipboard_button("Copy CC URL", cc_url, key="copy_cc")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            show_link("Customer Central", cc_url)
+        with col2:
+            copy_to_clipboard_button("Copy", cc_url, key="copy_cc")
 
         urls_core.extend([
             ("Sandbox", sandbox_url),
@@ -196,11 +209,14 @@ if submitted:
         st.subheader("Implementation Tenants")
         if impls:
             for idx, (label, url) in enumerate(impls):
-                st.markdown(
-                    f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
-                    unsafe_allow_html=True
-                )
-                copy_to_clipboard_button(f"Copy {label.strip(' :')}", url, key=f"copy_impl_{idx}")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.markdown(
+                        f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
+                        unsafe_allow_html=True
+                    )
+                with col2:
+                    copy_to_clipboard_button("Copy", url, key=f"copy_impl_{idx}")
                 urls_impl.append((label.strip(" :"), url))
         else:
             st.text("No implementation tenants found.")
