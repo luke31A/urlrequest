@@ -2,6 +2,7 @@ import base64
 import json
 from pathlib import Path
 import streamlit as st
+import streamlit.components.v1 as components
 
 from main import (
     find_production_url,
@@ -42,21 +43,6 @@ st.markdown(
         font-size: 1.8rem;
         line-height: 1.2;
       }}
-      .copy-btn {{
-        padding: 2px 6px;
-        cursor: pointer;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        background: #f9f9f9;
-        font-size: 0.9rem;
-      }}
-      .url-row {{
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 2px 0;
-        flex-wrap: wrap;
-      }}
     </style>
     <div class="topbar">
       <div class="topbar-row">
@@ -76,33 +62,37 @@ st.markdown(
 def show_link(label: str, url: str, key: str):
     """
     Renders a labeled, clickable URL with an inline copy-to-clipboard button.
-    Uses JSON encoding to safely embed the URL in JS.
+    Implemented with components.html so client-side JS runs reliably.
     """
-    js_url = json.dumps(url)  # safe for embedding in JS string
-    st.markdown(
+    # Use json.dumps so the URL is safely embedded as a JS string literal
+    js_url = json.dumps(url)
+    components.html(
         f"""
-        <div class="url-row">
-          <span><strong>{label} URL:</strong> <a href="{url}" target="_blank" rel="noopener">{url}</a></span>
-          <button id="copy_{key}" class="copy-btn" aria-label="Copy {label} URL">📋</button>
+        <div style="display:flex;align-items:center;gap:8px;margin:2px 0;flex-wrap:wrap;">
+          <span><strong>{label} URL:</strong> <a href={js_url} target="_blank" rel="noopener">{url}</a></span>
+          <button id="copy_{key}"
+                  style="padding:2px 6px;cursor:pointer;border:1px solid #ddd;border-radius:6px;background:#f9f9f9;">
+            📋
+          </button>
         </div>
         <script>
-          const btn_{key} = document.getElementById("copy_{key}");
-          if (btn_{key}) {{
-            btn_{key}.onclick = async () => {{
+          const btn = document.getElementById("copy_{key}");
+          if (btn) {{
+            btn.addEventListener("click", async () => {{
               try {{
                 await navigator.clipboard.writeText({js_url});
-                const old = btn_{key}.innerText;
-                btn_{key}.innerText = "✅";
-                setTimeout(() => btn_{key}.innerText = old, 1200);
+                const old = btn.innerText;
+                btn.innerText = "✅";
+                setTimeout(() => btn.innerText = old, 1200);
               }} catch (e) {{
-                btn_{key}.innerText = "⚠️";
-                setTimeout(() => btn_{key}.innerText = "📋", 1200);
+                btn.innerText = "⚠️";
+                setTimeout(() => btn.innerText = "📋", 1200);
               }}
-            }};
+            }});
           }}
         </script>
         """,
-        unsafe_allow_html=True,
+        height=44,  # enough space for the row
     )
 
 # -------------------------------------------------
@@ -224,7 +214,6 @@ if submitted:
         st.subheader("Implementation Tenants")
         if impls:
             for idx, (label, url) in enumerate(impls):
-                # Normalize label and reuse the same renderer so each line has a copy button
                 clean_label = label.strip(" :")
                 show_link(clean_label, url, key=f"impl_{idx}")
                 all_urls.append(f"{clean_label}: {url}")
