@@ -4,41 +4,47 @@ import base64
 
 st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
 
-# Read logo file and encode to base64
-logo_path = Path(__file__).with_name("CommitLogo.png")
+# === Fixed top-left logo ===
+logo_path = Path(__file__).with_name("CommitLogo.png")  # exact case
 data = base64.b64encode(logo_path.read_bytes()).decode()
 
-# Inject logo + extra padding so title/content clears the logo
 st.markdown(
     f"""
     <style>
-      .logo-fixed {{
-        position: absolute;
-        top: 10px;
-        left: 10px;
+      /* Fixed logo */
+      .commit-logo {{
+        position: fixed;   /* fixed so it stays pinned even when scrolling */
+        top: 12px;
+        left: 12px;
         z-index: 1000;
       }}
-      .logo-fixed img {{
+      .commit-logo img {{
         width: 120px;
       }}
-      /* Pushes the app content down so it doesn't overlap the logo */
+
+      /* Push the main content down so it clears the fixed logo */
       .block-container {{
-        padding-top: 140px !important;
+        padding-top: 150px !important;   /* adjust if your logo height changes */
       }}
     </style>
-    <div class="logo-fixed">
-        <img src="data:image/png;base64,{data}">
+    <div class="commit-logo">
+      <img src="data:image/png;base64,{data}">
     </div>
     """,
     unsafe_allow_html=True
 )
 
+# Extra spacer as a fallback for Streamlit theme/DOM differences
+st.markdown("<div style='height:0px'></div>", unsafe_allow_html=True)
+
+# === Page content starts here ===
 st.title("Workday Tenant URL Finder")
 st.write(
     "Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. "
     "Please note, you must know the actual tenant id for the tool to work, this is usually the "
     "name of the company with no spaces, but not always."
 )
+
 tenant_id = st.text_input("Tenant ID")
 
 max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
