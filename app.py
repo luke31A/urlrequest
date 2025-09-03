@@ -1,8 +1,8 @@
+#Comment - Written with Claude off original main.py from Luke Adams
+
 import base64
 import json
-import re
 from pathlib import Path
-
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -42,30 +42,8 @@ st.markdown(
       .topbar img {{ width: 110px; display: block; }}
       .topbar h1 {{
         margin: 0;
-        font-size: 1.8rem;
+        font-size: 1.7rem;
         line-height: 1.2;
-      }}
-      .copy-btn {{
-        padding: 2px 6px;
-        cursor: pointer;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        background: #f9f9f9;
-        font-size: 0.9rem;
-      }}
-      .url-row {{
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 2px 0;
-        flex-wrap: wrap;
-        font-family: var(--font, 'Source Sans Pro', sans-serif);
-        font-size: 0.75rem;    /* compact text per your preference */
-        line-height: 1.4;      /* keep it readable */
-      }}
-      .url-row a {{
-        color: var(--link-color, #0366d6);
-        text-decoration: none;
       }}
     </style>
     <div class="topbar">
@@ -84,16 +62,23 @@ st.markdown(
 # Helpers
 # -------------------------------------------------
 def show_link(label: str, url: str, key: str):
-    """
-    Render a labeled, clickable URL with an inline copy-to-clipboard button.
-    Implemented with components.html so client-side JS runs reliably.
-    """
-    js_url = json.dumps(url)  # safe for embedding in JS string
+    js_url = json.dumps(url)
     components.html(
         f"""
-        <div class="url-row">
-          <span><strong>{label} URL:</strong> <a href={js_url} target="_blank" rel="noopener">{url}</a></span>
-          <button id="copy_{key}" class="copy-btn" aria-label="Copy {label} URL">📋</button>
+        <div style="display:flex;align-items:center;gap:8px;margin:2px 0;flex-wrap:wrap;
+                    font-family: var(--font, 'Source Sans Pro', sans-serif);
+                    font-size: 0.75rem; line-height: 1.3;">
+          <span><strong>{label} URL:</strong> 
+            <a href={js_url} target="_blank" rel="noopener" 
+               style="color: var(--link-color, #0366d6); text-decoration: none;">
+               {url}
+            </a>
+          </span>
+          <button id="copy_{key}"
+                  style="padding:2px 6px;cursor:pointer;border:1px solid #ddd;
+                         border-radius:6px;background:#f9f9f9;font-size:0.85rem;">
+            📋
+          </button>
         </div>
         <script>
           const btn = document.getElementById("copy_{key}");
@@ -115,8 +100,10 @@ def show_link(label: str, url: str, key: str):
         height=44,
     )
 
+
+
 # -------------------------------------------------
-# Session state
+# Session state - Simple format
 # -------------------------------------------------
 if "search_history" not in st.session_state:
     st.session_state.search_history = {}  # {tenant_id: success_bool}
@@ -124,8 +111,6 @@ if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False
-if "tenant_input" not in st.session_state:
-    st.session_state.tenant_input = st.session_state.prefill or ""
 
 # -------------------------------------------------
 # Sidebar: recent searches
@@ -134,16 +119,20 @@ with st.sidebar:
     st.subheader("Recent Searches")
     if st.session_state.search_history:
         for tenant_id, was_successful in reversed(list(st.session_state.search_history.items())):
-            button_label = f"{'🟢' if was_successful else '🔴'} {tenant_id}"
+            # Color coding
+            if was_successful:
+                button_label = f"🟢 {tenant_id}"
+            else:
+                button_label = f"🔴 {tenant_id}"
+            
             if st.button(button_label, key=f"hist_{tenant_id}", use_container_width=True):
                 st.session_state.prefill = tenant_id
-                st.session_state.tenant_input = tenant_id
                 st.session_state.run_from_history = True
                 st.rerun()
+                
         if st.button("Clear History", type="secondary", use_container_width=True):
             st.session_state.search_history = {}
             st.session_state.prefill = ""
-            st.session_state.tenant_input = ""
             st.rerun()
     else:
         st.caption("No searches yet")
@@ -157,40 +146,24 @@ st.info(
 )
 
 # -------------------------------------------------
-# Inputs (no form -> active validation works)
+# Input form
 # -------------------------------------------------
-colA, colB = st.columns([3, 1])
-with colA:
-    st.text_input(
-        "Tenant ID",
-        key="tenant_input",
-        value=st.session_state.tenant_input,
-        help="Only letters and underscores are allowed.",
-    )
-with colB:
-    max_impl = st.slider(
-        "Max IMPL", min_value=5, max_value=50, value=10, step=1,
-        help="How deep to scan IMPL-XX"
-    )
+with st.form(key="search_form", clear_on_submit=False):
+    current_prefill = st.session_state.prefill
+    tenant_id = st.text_input("Tenant ID", value=current_prefill)
+    max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
+    st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
+    submitted = st.form_submit_button("Find URLs")
 
-# Active validation (runs every keystroke)
-tenant_id = (st.session_state.tenant_input or "").strip()
-pattern = r"^[A-Za-z_]+$"
-if tenant_id:
-    if not re.fullmatch(pattern, tenant_id):
-        st.error("Tenant ID can only contain letters and underscores (no spaces, numbers, or symbols).")
-    else:
-        st.success("Tenant ID format looks good.")
+# Clear prefill after form renders
+if not st.session_state.run_from_history:
+    st.session_state.prefill = ""
 
-# History click auto-run
-submitted = False
+# Handle history click
 if st.session_state.run_from_history:
     submitted = True
+    tenant_id = current_prefill
     st.session_state.run_from_history = False
-
-# Manual submit button
-if st.button("Find URLs", type="primary"):
-    submitted = True
 
 # -------------------------------------------------
 # Main search logic
@@ -198,11 +171,6 @@ if st.button("Find URLs", type="primary"):
 if submitted:
     if not tenant_id:
         st.warning("Enter a tenant ID first.")
-        st.stop()
-
-    # Final guard before search
-    if not re.fullmatch(pattern, tenant_id):
-        st.warning("Please fix the Tenant ID format before searching.")
         st.stop()
 
     # Add to history (initially as failed, will update if successful)
@@ -215,8 +183,10 @@ if submitted:
         st.error("No Production URL found.")
         st.stop()
 
-    # Mark as successful and cap history to last 10
+    # Mark as successful
     st.session_state.search_history[tenant_id] = True
+    
+    # Keep only last 10 searches
     if len(st.session_state.search_history) > 10:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
@@ -228,6 +198,7 @@ if submitted:
     show_link("Production", production_url, key="prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
+    
     all_urls = [f"Production: {production_url}"]
 
     if sandbox_template:
@@ -242,7 +213,7 @@ if submitted:
         all_urls.extend([
             f"Sandbox: {sandbox_url}",
             f"Preview: {preview_url}",
-            f"Customer Central: {cc_url}",
+            f"Customer Central: {cc_url}"
         ])
 
         with st.spinner("Scanning IMPL tenants..."):
@@ -256,14 +227,11 @@ if submitted:
                 all_urls.append(f"{clean_label}: {url}")
         else:
             st.text("No implementation tenants found.")
-
+            
         # All URLs summary
         st.subheader("All URLs Summary")
         all_urls_text = "\n".join(all_urls)
         st.code(all_urls_text, language=None)
-
+        
     else:
         st.warning("No Sandbox URL found for this Data Center.")
-
-# Clear any prefill after rendering inputs so it doesn't override typing
-st.session_state.prefill = ""
