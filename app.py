@@ -20,37 +20,12 @@ st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo
 # Copy button helper
 # -------------------------------------------------
 def copy_button(text_to_copy, button_text, key):
-    import json
-    # Properly escape the text for JavaScript
-    escaped_text = json.dumps(text_to_copy)
-    button_id = f"copy_btn_{key}"
-    st.markdown(f"""
-    <script>
-    function copy_{key}() {{
-        const textToCopy = {escaped_text};
-        navigator.clipboard.writeText(textToCopy).then(() => {{
-            const btn = document.getElementById('{button_id}');
-            const orig = btn.innerHTML;
-            btn.innerHTML = '✅ Copied!';
-            btn.style.backgroundColor = '#28a745';
-            setTimeout(() => {{ btn.innerHTML = orig; btn.style.backgroundColor = '#ff4b4b'; }}, 1500);
-        }}).catch(() => {{
-            const textArea = document.createElement('textarea');
-            textArea.value = textToCopy;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            const btn = document.getElementById('{button_id}');
-            const orig = btn.innerHTML;
-            btn.innerHTML = '✅ Copied!';
-            btn.style.backgroundColor = '#28a745';
-            setTimeout(() => {{ btn.innerHTML = orig; btn.style.backgroundColor = '#ff4b4b'; }}, 1500);
-        }});
-    }}
-    </script>
-    <button id="{button_id}" onclick="copy_{key}()" style="background:#ff4b4b;color:white;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;margin:5px 0;">{button_text}</button>
-    """, unsafe_allow_html=True)
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.code(text_to_copy, language=None)
+    with col2:
+        if st.button(button_text, key=f"copy_{key}", help="Click to copy, then Ctrl+A and Ctrl+C"):
+            st.success("👆 Select text above and copy (Ctrl+A, Ctrl+C)")
 
 # -------------------------------------------------
 # Sticky top bar: logo + title side by side
