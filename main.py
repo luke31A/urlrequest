@@ -27,7 +27,7 @@ def _build_session():
 
 _SESSION = _build_session()
 
-def check_redirect(url: str, timeout: float = 3.0) -> bool:
+def check_redirect(url: str, timeout: float = .75) -> bool:
     """Return True if final URL equals the requested URL (no redirect).
 
     Tries HEAD first, falls back to GET if HEAD is not allowed.
