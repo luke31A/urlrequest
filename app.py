@@ -2,7 +2,8 @@ import streamlit as st
 from pathlib import Path
 import base64
 
-st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
+st.set_page_config(page_icon="🌐")
+st.title("Workday Tenant URL Finder")
 
 data = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
 
