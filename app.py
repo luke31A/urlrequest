@@ -21,6 +21,11 @@ st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="🌐")
 # Make sure the filename and case match exactly
 logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
 
+# -------------------------------------------------
+# Sticky top bar: logo + title side by side
+# -------------------------------------------------
+logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
+
 st.markdown(
     f"""
     <style>
@@ -46,7 +51,9 @@ st.markdown(
     </style>
     <div class="topbar">
       <div class="topbar-row">
-        <img src="data:image/png;base64,{logo_b64}" alt="Commit logo">
+        <a href="https://commitconsulting.com/" target="_blank" rel="noopener">
+          <img src="data:image/png;base64,{logo_b64}" alt="Commit logo">
+        </a>
         <h1>Workday Tenant URL Finder</h1>
       </div>
     </div>
