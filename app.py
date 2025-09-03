@@ -55,6 +55,15 @@ st.markdown(
 )
 
 # -------------------------------------------------
+# Helpers
+# -------------------------------------------------
+def show_link(label: str, url: str):
+    st.markdown(
+        f"**{label} URL:** <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
+        unsafe_allow_html=True,
+    )
+
+# -------------------------------------------------
 # Session state
 # -------------------------------------------------
 if "history" not in st.session_state:
@@ -65,7 +74,7 @@ if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False  # trigger auto-submit once
 
 # -------------------------------------------------
-# Sidebar: recent searches
+# Sidebar: recent searches (click = prefill + auto-submit)
 # -------------------------------------------------
 with st.sidebar:
     st.subheader("Recent")
@@ -73,7 +82,7 @@ with st.sidebar:
         for t in reversed(st.session_state.history):  # newest first
             if st.button(t, key=f"hist-{t}", use_container_width=True):
                 st.session_state.prefill = t
-                st.session_state.run_from_history = True  # auto-submit after form renders
+                st.session_state.run_from_history = True  # will submit after form renders
         if st.button("Clear history", type="secondary", use_container_width=True):
             st.session_state.history = []
             st.session_state.prefill = ""
@@ -127,9 +136,8 @@ if submitted:
 
     st.metric(label="Data Center", value=data_center)
 
-    # Show full URLs as plain text (no markdown link rendering)
     st.subheader("Core URLs")
-    st.text(f"Production URL: {production_url}")
+    show_link("Production", production_url)
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
 
@@ -141,9 +149,9 @@ if submitted:
         preview_url = find_preview_url(sandbox_template).format(id=tenant_id)
         cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
-        st.text(f"Sandbox URL: {sandbox_url}")
-        st.text(f"Preview URL: {preview_url}")
-        st.text(f"Customer Central URL: {cc_url}")
+        show_link("Sandbox", sandbox_url)
+        show_link("Preview", preview_url)
+        show_link("Customer Central", cc_url)
 
         urls_core.extend([
             ("Sandbox", sandbox_url),
@@ -157,7 +165,9 @@ if submitted:
         st.subheader("Implementation Tenants")
         if impls:
             for label, url in impls:
-                st.text(f"{label} {url}")
+                # keep full URL text, clickable
+                st.markdown(f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
+                            unsafe_allow_html=True)
                 urls_impl.append((label.strip(" :"), url))
         else:
             st.text("No implementation tenants found.")
@@ -165,7 +175,7 @@ if submitted:
         st.warning("No Sandbox URL found for this Data Center.")
 
     # -------------------------------------------------
-    # Slack-ready message with copy button (still clickable in Slack)
+    # Slack-ready message with copy button (keeps Slack links clickable)
     # -------------------------------------------------
     lines = [f"*Workday URLs for `{tenant_id}`*"]
     for label, url in urls_core:
