@@ -60,16 +60,12 @@ st.markdown(
 # Helpers
 # -------------------------------------------------
 def show_link(label: str, url: str, key: str):
-    """
-    Renders a labeled, clickable URL with an inline copy-to-clipboard button.
-    Uses components.html so client-side JS runs reliably, but keeps Streamlit font styling.
-    """
-    js_url = json.dumps(url)  # safe for embedding in JS string
+    js_url = json.dumps(url)
     components.html(
         f"""
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0;flex-wrap:wrap;
                     font-family: var(--font, 'Source Sans Pro', sans-serif);
-                    font-size: 1rem; line-height: 1.4;">
+                    font-size: 0.9rem; line-height: 1.3;">
           <span><strong>{label} URL:</strong> 
             <a href={js_url} target="_blank" rel="noopener" 
                style="color: var(--link-color, #0366d6); text-decoration: none;">
@@ -78,7 +74,7 @@ def show_link(label: str, url: str, key: str):
           </span>
           <button id="copy_{key}"
                   style="padding:2px 6px;cursor:pointer;border:1px solid #ddd;
-                         border-radius:6px;background:#f9f9f9;font-size:0.7rem;">
+                         border-radius:6px;background:#f9f9f9;font-size:0.85rem;">
             📋
           </button>
         </div>
@@ -101,6 +97,7 @@ def show_link(label: str, url: str, key: str):
         """,
         height=44,
     )
+
 
 
 # -------------------------------------------------
