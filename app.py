@@ -209,13 +209,8 @@ if submitted:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
 
-    st.markdown(
-    f"<div style='display:flex;align-items:center;gap:8px; margin:6px 0'>"
-    f"{status_icon_html(True)}"
-    f"<h2 style='margin:0; font-size:1.1rem; line-height:1.2;'>Results for: {tenant_id}</h2>"
-    f"</div>",
-    unsafe_allow_html=True,
-)
+    st.subheader(f"Results for: {tenant_id}")
+
     st.metric(label="Data Center", value=data_center)
 
     st.subheader("Core URLs")
