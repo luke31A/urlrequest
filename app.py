@@ -151,6 +151,7 @@ st.info(
 with st.form(key="search_form", clear_on_submit=False):
     current_prefill = st.session_state.prefill
     tenant_id = st.text_input("Tenant ID", value=current_prefill)
+    st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
     submitted = st.form_submit_button("Find URLs")
 
