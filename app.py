@@ -20,11 +20,15 @@ st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo
 # Copy button helper
 # -------------------------------------------------
 def copy_button(text_to_copy, button_text, key):
+    import json
+    # Properly escape the text for JavaScript
+    escaped_text = json.dumps(text_to_copy)
     button_id = f"copy_btn_{key}"
     st.markdown(f"""
     <script>
     function copy_{key}() {{
-        navigator.clipboard.writeText(`{text_to_copy}`).then(() => {{
+        const textToCopy = {escaped_text};
+        navigator.clipboard.writeText(textToCopy).then(() => {{
             const btn = document.getElementById('{button_id}');
             const orig = btn.innerHTML;
             btn.innerHTML = '✅ Copied!';
@@ -32,7 +36,7 @@ def copy_button(text_to_copy, button_text, key):
             setTimeout(() => {{ btn.innerHTML = orig; btn.style.backgroundColor = '#ff4b4b'; }}, 1500);
         }}).catch(() => {{
             const textArea = document.createElement('textarea');
-            textArea.value = `{text_to_copy}`;
+            textArea.value = textToCopy;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand('copy');
