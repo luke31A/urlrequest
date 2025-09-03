@@ -7,8 +7,6 @@ Derived from user's original script, with minor resiliency improvements.
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import concurrent.futures
-from threading import Lock
 
 def _build_session():
     session = requests.Session()
@@ -17,8 +15,8 @@ def _build_session():
         "User-Agent": "WorkdayURLFinder/1.0 (+https://example.com)"
     })
     retries = Retry(
-        total=2,  # Reduced from 3 for faster failures
-        backoff_factor=0.1,  # Reduced from 0.3
+        total=3,
+        backoff_factor=0.3,
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["HEAD", "GET"]
     )
@@ -28,24 +26,21 @@ def _build_session():
     return session
 
 _SESSION = _build_session()
-_SESSION_LOCK = Lock()
 
-def check_redirect(url: str, timeout: float = 3.0) -> bool:  # Reduced timeout from 8.0 to 3.0
+def check_redirect(url: str, timeout: float = 8.0) -> bool:
     """Return True if final URL equals the requested URL (no redirect).
 
     Tries HEAD first, falls back to GET if HEAD is not allowed.
     """
     try:
-        with _SESSION_LOCK:  # Thread-safe session usage
-            r = _SESSION.head(url, allow_redirects=True, timeout=timeout)
+        r = _SESSION.head(url, allow_redirects=True, timeout=timeout)
         if r.is_redirect or r.history:
             return r.url == url
         return True  # no redirect at all
     except requests.RequestException:
         # Some servers disallow HEAD. Try a light GET without downloading body.
         try:
-            with _SESSION_LOCK:
-                r = _SESSION.get(url, allow_redirects=True, timeout=timeout, stream=True)
+            r = _SESSION.get(url, allow_redirects=True, timeout=timeout, stream=True)
             if r.is_redirect or r.history:
                 return r.url == url
             return True
@@ -97,33 +92,11 @@ def find_cc_url(sandbox_url_template: str):
     # Replace '/{id}/' with '/{id}_cc/'
     return sandbox_url_template.replace('/{id}/', '/{id}_cc/')
 
-def check_impl_tenant(sandbox_url_template: str, tenant_id: str, impl_index: int):
-    """Check a single IMPL tenant. Returns (label, url) if found, None if not."""
-    impl_id = f"{tenant_id}{impl_index}"
-    url = sandbox_url_template.format(id=impl_id)
-    if check_redirect(url, timeout=2.0):  # Shorter timeout for IMPL checks
-        return (f"IMPL{impl_index}:", url)
-    return None
-
 def find_implementation_tenants(sandbox_url_template: str, tenant_id: str, max_impl: int = 20):
     implementation_tenants = []
-    consecutive_failures = 0
-    max_consecutive_failures = 3  # Stop after 3 consecutive failures
-    
-    # Check first few sequentially to establish pattern
-    for i in range(1, min(4, max_impl + 1)):
-        result = check_impl_tenant(sandbox_url_template, tenant_id, i)
-        if result:
-            implementation_tenants.append(result)
-            consecutive_failures = 0
-        else:
-            consecutive_failures += 1
-            if consecutive_failures >= max_consecutive_failures:
-                # No IMPL tenants found in first 3, likely none exist
-                return implementation_tenants
-    
-    # If we found some, continue checking the rest in parallel
-    if implementation_tenants and max_impl > 3:
-        remaining_indices = list(range(4, max_impl + 1))
-        
-        # Use
+    for i in range(1, max_impl):
+        impl_id = f"{tenant_id}{i}"
+        url = sandbox_url_template.format(id=impl_id)
+        if check_redirect(url):
+            implementation_tenants.append((f"IMPL{i}:", url))
+    return implementation_tenants
