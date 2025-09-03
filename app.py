@@ -41,7 +41,6 @@ st.markdown(
 
 # You can remove a separate st.title() now since the topbar has the title.
 # === Page content starts here ===
-st.title("Workday Tenant URL Finder")
 st.write(
     "Paste a Workday tenant ID. The app probes known data centers and shows matching URLs. "
     "Please note, you must know the actual tenant id for the tool to work, this is usually the "
