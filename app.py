@@ -4,39 +4,42 @@ import base64
 
 st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
 
-# === Fixed top-left logo ===
-logo_path = Path(__file__).with_name("CommitLogo.png")  # exact case
-data = base64.b64encode(logo_path.read_bytes()).decode()
+data = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
 
 st.markdown(
     f"""
     <style>
-      /* Fixed logo */
-      .commit-logo {{
-        position: fixed;   /* fixed so it stays pinned even when scrolling */
-        top: 12px;
-        left: 12px;
+      .topbar {{
+        position: sticky;
+        top: 0;
         z-index: 1000;
+        background: white;         /* match your theme background */
+        padding: 10px 12px 6px 12px;
+        border-bottom: 1px solid #eee;
       }}
-      .commit-logo img {{
-        width: 120px;
+      .topbar-row {{
+        display: flex;
+        align-items: center;
+        gap: 16px;
       }}
-
-      /* Push the main content down so it clears the fixed logo */
-      .block-container {{
-        padding-top: 150px !important;   /* adjust if your logo height changes */
+      .topbar img {{ width: 110px; display: block; }}
+      .topbar h1 {{
+        margin: 0;
+        font-size: 1.8rem;         /* tune as you like */
+        line-height: 1.2;
       }}
     </style>
-    <div class="commit-logo">
-      <img src="data:image/png;base64,{data}">
+    <div class="topbar">
+      <div class="topbar-row">
+        <img src="data:image/png;base64,{data}" alt="Commit logo">
+        <h1>Workday Tenant URL Finder</h1>
+      </div>
     </div>
     """,
     unsafe_allow_html=True
 )
 
-# Extra spacer as a fallback for Streamlit theme/DOM differences
-st.markdown("<div style='height:0px'></div>", unsafe_allow_html=True)
-
+# You can remove a separate st.title() now since the topbar has the title.
 # === Page content starts here ===
 st.title("Workday Tenant URL Finder")
 st.write(
