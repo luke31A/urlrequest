@@ -42,6 +42,21 @@ st.markdown(
         font-size: 1.8rem;
         line-height: 1.2;
       }}
+      .copy-btn {{
+        padding: 2px 6px;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #f9f9f9;
+        font-size: 0.9rem;
+      }}
+      .url-row {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 2px 0;
+        flex-wrap: wrap;
+      }}
     </style>
     <div class="topbar">
       <div class="topbar-row">
@@ -58,9 +73,35 @@ st.markdown(
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
-def show_link(label: str, url: str):
+def show_link(label: str, url: str, key: str):
+    """
+    Renders a labeled, clickable URL with an inline copy-to-clipboard button.
+    Uses JSON encoding to safely embed the URL in JS.
+    """
+    js_url = json.dumps(url)  # safe for embedding in JS string
     st.markdown(
-        f"**{label} URL:** <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
+        f"""
+        <div class="url-row">
+          <span><strong>{label} URL:</strong> <a href="{url}" target="_blank" rel="noopener">{url}</a></span>
+          <button id="copy_{key}" class="copy-btn" aria-label="Copy {label} URL">📋</button>
+        </div>
+        <script>
+          const btn_{key} = document.getElementById("copy_{key}");
+          if (btn_{key}) {{
+            btn_{key}.onclick = async () => {{
+              try {{
+                await navigator.clipboard.writeText({js_url});
+                const old = btn_{key}.innerText;
+                btn_{key}.innerText = "✅";
+                setTimeout(() => btn_{key}.innerText = old, 1200);
+              }} catch (e) {{
+                btn_{key}.innerText = "⚠️";
+                setTimeout(() => btn_{key}.innerText = "📋", 1200);
+              }}
+            }};
+          }}
+        </script>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -112,89 +153,4 @@ st.info(
 # -------------------------------------------------
 with st.form(key="search_form", clear_on_submit=False):
     current_prefill = st.session_state.prefill
-    tenant_id = st.text_input("Tenant ID", value=current_prefill)
-    max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
-    submitted = st.form_submit_button("Find URLs")
-
-# Clear prefill after form renders
-if not st.session_state.run_from_history:
-    st.session_state.prefill = ""
-
-# Handle history click
-if st.session_state.run_from_history:
-    submitted = True
-    tenant_id = current_prefill
-    st.session_state.run_from_history = False
-
-# -------------------------------------------------
-# Main search logic
-# -------------------------------------------------
-if submitted:
-    if not tenant_id:
-        st.warning("Enter a tenant ID first.")
-        st.stop()
-
-    # Add to history (initially as failed, will update if successful)
-    st.session_state.search_history[tenant_id] = False
-
-    with st.spinner("Checking data centers..."):
-        data_center, production_url = find_production_url(tenant_id)
-
-    if not production_url:
-        st.error("No Production URL found.")
-        st.stop()
-
-    # Mark as successful
-    st.session_state.search_history[tenant_id] = True
-    
-    # Keep only last 10 searches
-    if len(st.session_state.search_history) > 10:
-        oldest_key = next(iter(st.session_state.search_history))
-        del st.session_state.search_history[oldest_key]
-
-    st.subheader(f"Results for: {tenant_id}")
-    st.metric(label="Data Center", value=data_center)
-
-    st.subheader("Core URLs")
-    show_link("Production", production_url)
-
-    sandbox_template = find_sandbox_url(data_center, tenant_id)
-    
-    all_urls = [f"Production: {production_url}"]
-
-    if sandbox_template:
-        sandbox_url = sandbox_template.format(id=tenant_id)
-        preview_url = find_preview_url(sandbox_template).format(id=tenant_id)
-        cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
-
-        show_link("Sandbox", sandbox_url)
-        show_link("Preview", preview_url)
-        show_link("Customer Central", cc_url)
-
-        all_urls.extend([
-            f"Sandbox: {sandbox_url}",
-            f"Preview: {preview_url}",
-            f"Customer Central: {cc_url}"
-        ])
-
-        with st.spinner("Scanning IMPL tenants..."):
-            impls = find_implementation_tenants(sandbox_template, tenant_id, max_impl=max_impl)
-
-        st.subheader("Implementation Tenants")
-        if impls:
-            for idx, (label, url) in enumerate(impls):
-                st.markdown(
-                    f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
-                    unsafe_allow_html=True
-                )
-                all_urls.append(f"{label.strip(' :')}: {url}")
-        else:
-            st.text("No implementation tenants found.")
-            
-        # All URLs summary
-        st.subheader("All URLs Summary")
-        all_urls_text = "\n".join(all_urls)
-        st.code(all_urls_text, language=None)
-        
-    else:
-        st.warning("No Sandbox URL found for this Data Center.")
+    tenant_id = st.text_input("Tenant ID", value=
