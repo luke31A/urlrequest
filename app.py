@@ -15,7 +15,7 @@ st.markdown(
     }
     </style>
     <div class="logo-container">
-        <img src="commitlogo.png">
+        <img src="CommitLogo.png">
     </div>
     """,
     unsafe_allow_html=True
