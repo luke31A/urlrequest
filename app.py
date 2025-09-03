@@ -40,7 +40,7 @@ st.markdown(
       .topbar img {{ width: 110px; display: block; }}
       .topbar h1 {{
         margin: 0;
-        font-size: 1.8rem;
+        font-size: 1.5rem;
         line-height: 1.2;
       }}
     </style>
