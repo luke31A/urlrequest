@@ -23,18 +23,6 @@ st.set_page_config(page_title="Workday Tenant URL Finder", page_icon="CommitLogo
 # Sticky top bar: logo + title side by side
 # -------------------------------------------------
 logo_b64 = base64.b64encode(Path("CommitLogo.png").read_bytes()).decode()
-
-# --- Pikachu status icons (tiny inline images) ---
-def _b64(path: str) -> str:
-    return base64.b64encode(Path(path).read_bytes()).decode()
-
-pika_happy_b64 = _b64("pikachu_happy.png")   # success icon
-pika_angry_b64 = _b64("pika_angry.png")      # failure icon
-
-def status_icon_html(success: bool, size_px: int = 18) -> str:
-    b64 = pika_happy_b64 if success else pika_angry_b64
-    return f"<img src='data:image/png;base64,{b64}' width='{size_px}' height='{size_px}' style='vertical-align:middle'/>"
-    
 st.markdown(
     f"""
     <style>
@@ -192,14 +180,8 @@ if submitted:
         data_center, production_url = find_production_url(tenant_id)
 
     if not production_url:
-    st.markdown(
-        f"<div style='display:flex;align-items:center;gap:8px; margin:6px 0'>"
-        f"{status_icon_html(False)}"
-        f"<strong>No Production URL found.</strong>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-    st.stop()
+        st.error("No Production URL found.")
+        st.stop()
 
     # Mark as successful
     st.session_state.search_history[tenant_id] = True
@@ -209,13 +191,7 @@ if submitted:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
 
-    st.markdown(
-    f"<div style='display:flex;align-items:center;gap:8px; margin:6px 0'>"
-    f"{status_icon_html(True)}"
-    f"<h2 style='margin:0; font-size:1.1rem; line-height:1.2;'>Results for: {tenant_id}</h2>"
-    f"</div>",
-    unsafe_allow_html=True,
-)
+    st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
 
     st.subheader("Core URLs")
