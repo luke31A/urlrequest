@@ -30,7 +30,6 @@ st.markdown(
         position: sticky;
         top: 0;
         z-index: 1000;
-        background: white;
         padding: 10px 12px 6px 12px;
         border-bottom: 1px solid #eee;
       }}
