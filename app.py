@@ -163,6 +163,7 @@ if submitted:
 
     st.subheader("Core URLs")
     show_link("Production", production_url)
+    copy_to_clipboard_button("Copy Production URL", production_url, key="copy_prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
 
@@ -175,8 +176,13 @@ if submitted:
         cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
         show_link("Sandbox", sandbox_url)
+        copy_to_clipboard_button("Copy Sandbox URL", sandbox_url, key="copy_sandbox")
+        
         show_link("Preview", preview_url)
+        copy_to_clipboard_button("Copy Preview URL", preview_url, key="copy_preview")
+        
         show_link("Customer Central", cc_url)
+        copy_to_clipboard_button("Copy CC URL", cc_url, key="copy_cc")
 
         urls_core.extend([
             ("Sandbox", sandbox_url),
@@ -189,13 +195,26 @@ if submitted:
 
         st.subheader("Implementation Tenants")
         if impls:
-            for label, url in impls:
+            for idx, (label, url) in enumerate(impls):
                 st.markdown(
                     f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
                     unsafe_allow_html=True
                 )
+                copy_to_clipboard_button(f"Copy {label.strip(' :')}", url, key=f"copy_impl_{idx}")
                 urls_impl.append((label.strip(" :"), url))
         else:
             st.text("No implementation tenants found.")
+            
+        # Copy All URLs button
+        st.subheader("Copy All URLs")
+        all_urls = []
+        for label, url in urls_core:
+            all_urls.append(f"{label}: {url}")
+        for label, url in urls_impl:
+            all_urls.append(f"{label}: {url}")
+        
+        all_urls_text = "\n".join(all_urls)
+        copy_to_clipboard_button("Copy All URLs", all_urls_text, key="copy_all")
+        
     else:
         st.warning("No Sandbox URL found for this Data Center.")
