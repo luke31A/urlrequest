@@ -65,7 +65,7 @@ def show_link(label: str, url: str, key: str):
         f"""
         <div style="display:flex;align-items:center;gap:8px;margin:2px 0;flex-wrap:wrap;
                     font-family: var(--font, 'Source Sans Pro', sans-serif);
-                    font-size: 0.9rem; line-height: 1.3;">
+                    font-size: 0.75rem; line-height: 1.3;">
           <span><strong>{label} URL:</strong> 
             <a href={js_url} target="_blank" rel="noopener" 
                style="color: var(--link-color, #0366d6); text-decoration: none;">
