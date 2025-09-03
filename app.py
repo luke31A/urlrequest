@@ -1,5 +1,26 @@
 
 import streamlit as st
+
+# Inject CSS to pin the logo to the top-left corner
+st.markdown(
+    """
+    <style>
+    .logo-container {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+    }
+    .logo-container img {
+        width: 120px; /* adjust size as needed */
+    }
+    </style>
+    <div class="logo-container">
+        <img src="commitlogo.png">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 from main import (
     find_production_url,
     find_sandbox_url,
