@@ -1,25 +1,37 @@
 
 import streamlit as st
 
-# Inject CSS to pin the logo to the top-left corner
+import streamlit as st
+from pathlib import Path
+import base64
+
+st.set_page_config(page_title="Workday URL Finder", page_icon="🌐")
+
+# Read logo bytes
+logo_path = Path(__file__).with_name("commitlogo.png")  # file next to app.py
+data = base64.b64encode(logo_path.read_bytes()).decode()
+
+# Pin to top-left
 st.markdown(
-    """
+    f"""
     <style>
-    .logo-container {
+      .logo-fixed {{
         position: absolute;
         top: 10px;
         left: 10px;
-    }
-    .logo-container img {
-        width: 120px; /* adjust size as needed */
-    }
+        z-index: 1000;
+      }}
+      .logo-fixed img {{
+        width: 120px;
+      }}
     </style>
-    <div class="logo-container">
-        <img src="CommitLogo.png">
+    <div class="logo-fixed">
+      <img src="data:image/png;base64,{data}">
     </div>
     """,
     unsafe_allow_html=True
 )
+
 
 from main import (
     find_production_url,
