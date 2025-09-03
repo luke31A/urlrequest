@@ -10,7 +10,7 @@ st.markdown(
     <style>
       .logo { position: absolute; top: 10px; left: 10px; width: 120px; z-index: 1000; }
     </style>
-    <img class="logo" src="commitlogo.png">
+    <img class="logo" src="CommitLogo.png">
     """,
     unsafe_allow_html=True
 )
