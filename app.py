@@ -30,6 +30,7 @@ st.markdown(
         position: sticky;
         top: 0;
         z-index: 1000;
+        background: white;
         padding: 10px 12px 6px 12px;
         border-bottom: 1px solid #eee;
       }}
@@ -43,6 +44,22 @@ st.markdown(
         margin: 0;
         font-size: 1.7rem;
         line-height: 1.2;
+      }}
+      @keyframes spin {{
+        from {{ transform: rotate(0deg); }}
+        to   {{ transform: rotate(360deg); }}
+      }}
+      .logo-spin {{
+        animation: spin 2s linear infinite;
+        width: 80px;
+        display: block;
+        margin: 0 auto;
+      }}
+      .loading-block {{
+        text-align: center;
+        margin: 20px 0;
+        font-size: 1rem;
+        color: #444;
       }}
     </style>
     <div class="topbar">
@@ -99,6 +116,18 @@ def show_link(label: str, url: str, key: str):
         height=44,
     )
 
+def show_spinner(message: str):
+    """Custom Commit logo spinner block."""
+    st.markdown(
+        f"""
+        <div class="loading-block">
+          <img src="data:image/png;base64,{logo_b64}" class="logo-spin" />
+          <p>{message}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # -------------------------------------------------
 # Session state - Simple format
 # -------------------------------------------------
@@ -116,7 +145,6 @@ with st.sidebar:
     st.subheader("Recent Searches")
     if st.session_state.search_history:
         for tenant_id, was_successful in reversed(list(st.session_state.search_history.items())):
-            # Color coding
             if was_successful:
                 button_label = f"🟢 {tenant_id}"
             else:
@@ -152,11 +180,9 @@ with st.form(key="search_form", clear_on_submit=False):
     st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     submitted = st.form_submit_button("Find URLs")
 
-# Clear prefill after form renders
 if not st.session_state.run_from_history:
     st.session_state.prefill = ""
 
-# Handle history click
 if st.session_state.run_from_history:
     submitted = True
     tenant_id = current_prefill
@@ -170,22 +196,22 @@ if submitted:
         st.warning("Enter a tenant ID first.")
         st.stop()
 
-    # Add to history (initially as failed, will update if successful)
     st.session_state.search_history[tenant_id] = False
 
-    with st.spinner("Checking data centers..."):
-        data_center, production_url = find_production_url(tenant_id)
+    placeholder = st.empty()
+    with placeholder.container():
+        show_spinner("Checking data centers...")
+
+    data_center, production_url = find_production_url(tenant_id)
+    placeholder.empty()
 
     if not production_url:
         st.error("No Production URL found.")
-        # Show angry Pikachu at bottom
-        st.image("pika_angry.png", width=75)
+        st.image("pika_angry.png", width=150)
         st.stop()
 
-    # Mark as successful
     st.session_state.search_history[tenant_id] = True
     
-    # Keep only last 10 searches
     if len(st.session_state.search_history) > 10:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
@@ -197,7 +223,6 @@ if submitted:
     show_link("Production", production_url, key="prod")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
-    
     all_urls = [f"Production: {production_url}"]
 
     if sandbox_template:
@@ -215,8 +240,12 @@ if submitted:
             f"Customer Central: {cc_url}"
         ])
 
-        with st.spinner("Scanning IMPL tenants..."):
-            impls = find_implementation_tenants(sandbox_template, tenant_id, max_impl=max_impl)
+        placeholder = st.empty()
+        with placeholder.container():
+            show_spinner("Scanning IMPL tenants...")
+
+        impls = find_implementation_tenants(sandbox_template, tenant_id, max_impl=max_impl)
+        placeholder.empty()
 
         st.subheader("Implementation Tenants")
         if impls:
@@ -227,14 +256,11 @@ if submitted:
         else:
             st.text("No implementation tenants found.")
             
-        # All URLs summary
         st.subheader("All URLs Summary")
         all_urls_text = "\n".join(all_urls)
         st.code(all_urls_text, language=None)
         
     else:
-        
         st.warning("No Sandbox URL found for this Data Center.")
     
-    # Show happy Pikachu at bottom for successful result
-    st.image("pikachu_happy.png", width=75)
+    st.image("pikachu_happy.png", width=150)
