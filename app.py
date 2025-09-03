@@ -120,14 +120,20 @@ st.info(
 # Input form: Enter submits
 # -------------------------------------------------
 with st.form(key="search_form", clear_on_submit=False):
-    tenant_id = st.text_input("Tenant ID", value=st.session_state.prefill)
+    # Get the current prefill value and then clear it to prevent it from sticking
+    current_prefill = st.session_state.prefill
+    tenant_id = st.text_input("Tenant ID", value=current_prefill)
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
     submitted = st.form_submit_button("Find URLs")  # Enter triggers this
+
+# Clear prefill after the form is rendered to prevent it from persisting
+if not st.session_state.run_from_history:
+    st.session_state.prefill = ""
 
 # If a history item was clicked, auto-run once with that value
 if st.session_state.run_from_history:
     submitted = True
-    tenant_id = st.session_state.prefill
+    tenant_id = current_prefill
     st.session_state.run_from_history = False  # consume the flag
 
 # -------------------------------------------------
@@ -143,7 +149,7 @@ if submitted:
         st.session_state.history.remove(tenant_id)
     st.session_state.history.append(tenant_id)
     st.session_state.history = st.session_state.history[-10:]
-    st.session_state.prefill = tenant_id
+    # Don't set prefill here anymore - let it stay empty for next search
 
     with st.spinner("Checking data centers..."):
         data_center, production_url = find_production_url(tenant_id)
@@ -192,5 +198,3 @@ if submitted:
             st.text("No implementation tenants found.")
     else:
         st.warning("No Sandbox URL found for this Data Center.")
-
- 
