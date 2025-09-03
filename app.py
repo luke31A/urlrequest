@@ -61,19 +61,23 @@ if "history" not in st.session_state:
     st.session_state.history = []     # list[str]
 if "prefill" not in st.session_state:
     st.session_state.prefill = ""     # value used to prefill the input
+if "run_from_history" not in st.session_state:
+    st.session_state.run_from_history = False  # trigger auto-submit once
 
 # -------------------------------------------------
-# Sidebar: recent searches (prefill only)
+# Sidebar: recent searches
 # -------------------------------------------------
 with st.sidebar:
     st.subheader("Recent")
     if st.session_state.history:
         for t in reversed(st.session_state.history):  # newest first
             if st.button(t, key=f"hist-{t}", use_container_width=True):
-                st.session_state.prefill = t  # just prefill; user must press Enter
+                st.session_state.prefill = t
+                st.session_state.run_from_history = True  # auto-submit after form renders
         if st.button("Clear history", type="secondary", use_container_width=True):
             st.session_state.history = []
             st.session_state.prefill = ""
+            st.session_state.run_from_history = False
     else:
         st.caption("No recent searches yet")
 
@@ -86,27 +90,33 @@ st.info(
 )
 
 # -------------------------------------------------
-# Input form: pressing Enter submits the form
+# Input form: Enter submits
 # -------------------------------------------------
 with st.form(key="search_form", clear_on_submit=False):
     tenant_id = st.text_input("Tenant ID", value=st.session_state.prefill)
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
     submitted = st.form_submit_button("Find URLs")  # Enter triggers this
 
+# If a history item was clicked, auto-run once with that value
+if st.session_state.run_from_history:
+    submitted = True
+    tenant_id = st.session_state.prefill
+    st.session_state.run_from_history = False  # consume the flag
+
 # -------------------------------------------------
-# Action (runs only on submit)
+# Action (runs only on submit / auto-submit)
 # -------------------------------------------------
 if submitted:
     if not tenant_id:
         st.warning("Enter a tenant ID first.")
         st.stop()
 
-    # Update history: move to end if already present, keep last 10
+    # Update history: move to end if present, keep last 10
     if tenant_id in st.session_state.history:
         st.session_state.history.remove(tenant_id)
     st.session_state.history.append(tenant_id)
     st.session_state.history = st.session_state.history[-10:]
-    st.session_state.prefill = tenant_id  # keep it in the box for convenience
+    st.session_state.prefill = tenant_id
 
     with st.spinner("Checking data centers..."):
         data_center, production_url = find_production_url(tenant_id)
@@ -116,28 +126,29 @@ if submitted:
         st.stop()
 
     st.metric(label="Data Center", value=data_center)
-    st.success(f"[Production URL]({production_url})")
+
+    # Show full URLs as plain text (no markdown link rendering)
+    st.subheader("Core URLs")
+    st.text(f"Production URL: {production_url}")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
 
-    urls_core = []  # (label, url)
-    urls_impl = []  # (label, url)
+    urls_core = [("Production", production_url)]
+    urls_impl = []
 
     if sandbox_template:
-        sx = sandbox_template.format(id=tenant_id)
-        pv = find_preview_url(sandbox_template).format(id=tenant_id)
-        cc = find_cc_url(sandbox_template).format(id=tenant_id)
+        sandbox_url = sandbox_template.format(id=tenant_id)
+        preview_url = find_preview_url(sandbox_template).format(id=tenant_id)
+        cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
-        st.subheader("Related")
-        st.write(f"[Sandbox URL]({sx})")
-        st.write(f"[Preview URL]({pv})")
-        st.write(f"[Customer Central URL]({cc})")
+        st.text(f"Sandbox URL: {sandbox_url}")
+        st.text(f"Preview URL: {preview_url}")
+        st.text(f"Customer Central URL: {cc_url}")
 
         urls_core.extend([
-            ("Production", production_url),
-            ("Sandbox", sx),
-            ("Preview", pv),
-            ("Customer Central", cc),
+            ("Sandbox", sandbox_url),
+            ("Preview", preview_url),
+            ("Customer Central", cc_url),
         ])
 
         with st.spinner("Scanning IMPL tenants..."):
@@ -146,26 +157,23 @@ if submitted:
         st.subheader("Implementation Tenants")
         if impls:
             for label, url in impls:
-                st.write(f"{label} [{url}]({url})")
+                st.text(f"{label} {url}")
                 urls_impl.append((label.strip(" :"), url))
         else:
-            st.write("No implementation tenants found.")
+            st.text("No implementation tenants found.")
     else:
         st.warning("No Sandbox URL found for this Data Center.")
-        urls_core.append(("Production", production_url))
 
     # -------------------------------------------------
-    # Slack-ready message with copy button
+    # Slack-ready message with copy button (still clickable in Slack)
     # -------------------------------------------------
     lines = [f"*Workday URLs for `{tenant_id}`*"]
     for label, url in urls_core:
         lines.append(f"• *{label}:* <{url}>")
-
     if urls_impl:
         lines.append("*Implementation Tenants*")
         for label, url in urls_impl:
             lines.append(f"• *{label}:* <{url}>")
-
     slack_message = "\n".join(lines)
 
     st.subheader("Share to Slack")
