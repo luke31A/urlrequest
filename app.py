@@ -2,7 +2,6 @@ import base64
 import json
 from pathlib import Path
 import streamlit as st
-from streamlit.components.v1 import html
 
 from main import (
     find_production_url,
@@ -65,48 +64,40 @@ def show_link(label: str, url: str):
         unsafe_allow_html=True,
     )
 
-def copy_to_clipboard_button(label: str, text: str, key: str = "copybtn"):
-    payload = json.dumps(text)  # escape safely
-    html(
-        f"""
-        <button id="{key}"
-                onclick="navigator.clipboard.writeText({payload});
-                         this.innerText='Copied!';
-                         setTimeout(()=>this.innerText='{label}', 1500);"
-                style="padding:8px 12px; border:1px solid #ddd;
-                       border-radius:6px; background:#f6f6f6; cursor:pointer;">
-            {label}
-        </button>
-        """,
-        height=45,
-    )
-
 # -------------------------------------------------
-# Session state
+# Session state - Simple format
 # -------------------------------------------------
-if "history" not in st.session_state:
-    st.session_state.history = []     # list[str]
+if "search_history" not in st.session_state:
+    st.session_state.search_history = {}  # {tenant_id: success_bool}
 if "prefill" not in st.session_state:
-    st.session_state.prefill = ""     # value used to prefill the input
+    st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
-    st.session_state.run_from_history = False  # trigger auto-submit once
+    st.session_state.run_from_history = False
 
 # -------------------------------------------------
-# Sidebar: recent searches (click = prefill + auto-submit)
+# Sidebar: recent searches
 # -------------------------------------------------
 with st.sidebar:
-    st.subheader("Recent")
-    if st.session_state.history:
-        for t in reversed(st.session_state.history):  # newest first
-            if st.button(t, key=f"hist-{t}", use_container_width=True):
-                st.session_state.prefill = t
-                st.session_state.run_from_history = True  # will submit after form renders
-        if st.button("Clear history", type="secondary", use_container_width=True):
-            st.session_state.history = []
+    st.subheader("Recent Searches")
+    if st.session_state.search_history:
+        for tenant_id, was_successful in reversed(list(st.session_state.search_history.items())):
+            # Color coding
+            if was_successful:
+                button_label = f"🟢 {tenant_id}"
+            else:
+                button_label = f"🔴 {tenant_id}"
+            
+            if st.button(button_label, key=f"hist_{tenant_id}", use_container_width=True):
+                st.session_state.prefill = tenant_id
+                st.session_state.run_from_history = True
+                st.rerun()
+                
+        if st.button("Clear History", type="secondary", use_container_width=True):
+            st.session_state.search_history = {}
             st.session_state.prefill = ""
-            st.session_state.run_from_history = False
+            st.rerun()
     else:
-        st.caption("No recent searches yet")
+        st.caption("No searches yet")
 
 # -------------------------------------------------
 # Helper text
@@ -117,39 +108,34 @@ st.info(
 )
 
 # -------------------------------------------------
-# Input form: Enter submits
+# Input form
 # -------------------------------------------------
 with st.form(key="search_form", clear_on_submit=False):
-    # Get the current prefill value and then clear it to prevent it from sticking
     current_prefill = st.session_state.prefill
     tenant_id = st.text_input("Tenant ID", value=current_prefill)
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
-    submitted = st.form_submit_button("Find URLs")  # Enter triggers this
+    submitted = st.form_submit_button("Find URLs")
 
-# Clear prefill after the form is rendered to prevent it from persisting
+# Clear prefill after form renders
 if not st.session_state.run_from_history:
     st.session_state.prefill = ""
 
-# If a history item was clicked, auto-run once with that value
+# Handle history click
 if st.session_state.run_from_history:
     submitted = True
     tenant_id = current_prefill
-    st.session_state.run_from_history = False  # consume the flag
+    st.session_state.run_from_history = False
 
 # -------------------------------------------------
-# Action (runs only on submit / auto-submit)
+# Main search logic
 # -------------------------------------------------
 if submitted:
     if not tenant_id:
         st.warning("Enter a tenant ID first.")
         st.stop()
 
-    # Update history: move to end if present, keep last 10
-    if tenant_id in st.session_state.history:
-        st.session_state.history.remove(tenant_id)
-    st.session_state.history.append(tenant_id)
-    st.session_state.history = st.session_state.history[-10:]
-    # Don't set prefill here anymore - let it stay empty for next search
+    # Add to history (initially as failed, will update if successful)
+    st.session_state.search_history[tenant_id] = False
 
     with st.spinner("Checking data centers..."):
         data_center, production_url = find_production_url(tenant_id)
@@ -158,49 +144,53 @@ if submitted:
         st.error("No Production URL found.")
         st.stop()
 
+    # Mark as successful
+    st.session_state.search_history[tenant_id] = True
+    
+    # Keep only last 10 searches
+    if len(st.session_state.search_history) > 10:
+        oldest_key = next(iter(st.session_state.search_history))
+        del st.session_state.search_history[oldest_key]
+
     st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
 
     st.subheader("Core URLs")
+    show_link("Production", production_url)
     
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        show_link("Production", production_url)
-    with col2:
-        copy_to_clipboard_button("Copy", production_url, key="copy_prod")
+    # Simple copy button for production
+    if st.button("📋 Copy Production URL", key="copy_prod"):
+        st.code(production_url)
+        st.success("✅ URL shown above - select and copy")
 
     sandbox_template = find_sandbox_url(data_center, tenant_id)
-
-    urls_core = [("Production", production_url)]
-    urls_impl = []
+    
+    all_urls = [f"Production: {production_url}"]
 
     if sandbox_template:
         sandbox_url = sandbox_template.format(id=tenant_id)
         preview_url = find_preview_url(sandbox_template).format(id=tenant_id)
         cc_url = find_cc_url(sandbox_template).format(id=tenant_id)
 
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            show_link("Sandbox", sandbox_url)
-        with col2:
-            copy_to_clipboard_button("Copy", sandbox_url, key="copy_sandbox")
+        show_link("Sandbox", sandbox_url)
+        if st.button("📋 Copy Sandbox URL", key="copy_sandbox"):
+            st.code(sandbox_url)
+            st.success("✅ URL shown above - select and copy")
         
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            show_link("Preview", preview_url)
-        with col2:
-            copy_to_clipboard_button("Copy", preview_url, key="copy_preview")
+        show_link("Preview", preview_url)
+        if st.button("📋 Copy Preview URL", key="copy_preview"):
+            st.code(preview_url)
+            st.success("✅ URL shown above - select and copy")
         
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            show_link("Customer Central", cc_url)
-        with col2:
-            copy_to_clipboard_button("Copy", cc_url, key="copy_cc")
+        show_link("Customer Central", cc_url)
+        if st.button("📋 Copy CC URL", key="copy_cc"):
+            st.code(cc_url)
+            st.success("✅ URL shown above - select and copy")
 
-        urls_core.extend([
-            ("Sandbox", sandbox_url),
-            ("Preview", preview_url),
-            ("Customer Central", cc_url),
+        all_urls.extend([
+            f"Sandbox: {sandbox_url}",
+            f"Preview: {preview_url}",
+            f"Customer Central: {cc_url}"
         ])
 
         with st.spinner("Scanning IMPL tenants..."):
@@ -209,28 +199,23 @@ if submitted:
         st.subheader("Implementation Tenants")
         if impls:
             for idx, (label, url) in enumerate(impls):
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.markdown(
-                        f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
-                        unsafe_allow_html=True
-                    )
-                with col2:
-                    copy_to_clipboard_button("Copy", url, key=f"copy_impl_{idx}")
-                urls_impl.append((label.strip(" :"), url))
+                st.markdown(
+                    f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
+                    unsafe_allow_html=True
+                )
+                if st.button(f"📋 Copy {label.strip(' :')}", key=f"copy_impl_{idx}"):
+                    st.code(url)
+                    st.success("✅ URL shown above - select and copy")
+                all_urls.append(f"{label.strip(' :')}: {url}")
         else:
             st.text("No implementation tenants found.")
             
-        # Copy All URLs button
+        # Copy all URLs
         st.subheader("Copy All URLs")
-        all_urls = []
-        for label, url in urls_core:
-            all_urls.append(f"{label}: {url}")
-        for label, url in urls_impl:
-            all_urls.append(f"{label}: {url}")
-        
-        all_urls_text = "\n".join(all_urls)
-        copy_to_clipboard_button("Copy All URLs", all_urls_text, key="copy_all")
+        if st.button("📋 Copy All URLs", key="copy_all"):
+            all_urls_text = "\n".join(all_urls)
+            st.code(all_urls_text)
+            st.success("✅ All URLs shown above - select and copy")
         
     else:
         st.warning("No Sandbox URL found for this Data Center.")
