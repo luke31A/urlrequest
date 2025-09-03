@@ -100,8 +100,6 @@ def show_link(label: str, url: str, key: str):
         height=44,
     )
 
-
-
 # -------------------------------------------------
 # Session state - Simple format
 # -------------------------------------------------
@@ -181,6 +179,8 @@ if submitted:
 
     if not production_url:
         st.error("No Production URL found.")
+        # Show angry Pikachu at bottom
+        st.image("pika_angry.png", width=150)
         st.stop()
 
     # Mark as successful
@@ -235,3 +235,6 @@ if submitted:
         
     else:
         st.warning("No Sandbox URL found for this Data Center.")
+    
+    # Show happy Pikachu at bottom for successful result
+    st.image("pikachu_happy.png", width=150)
