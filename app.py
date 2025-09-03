@@ -1,6 +1,8 @@
 import base64
+import json
 from pathlib import Path
 import streamlit as st
+from streamlit.components.v1 import html
 
 from main import (
     find_production_url,
@@ -61,6 +63,22 @@ def show_link(label: str, url: str):
     st.markdown(
         f"**{label} URL:** <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
         unsafe_allow_html=True,
+    )
+
+def copy_to_clipboard_button(label: str, text: str, key: str = "copybtn"):
+    payload = json.dumps(text)  # escape safely
+    html(
+        f"""
+        <button id="{key}"
+                onclick="navigator.clipboard.writeText({payload});
+                         this.innerText='Copied!';
+                         setTimeout(()=>this.innerText='{label}', 1500);"
+                style="padding:8px 12px; border:1px solid #ddd;
+                       border-radius:6px; background:#f6f6f6; cursor:pointer;">
+            {label}
+        </button>
+        """,
+        height=45,
     )
 
 # -------------------------------------------------
@@ -165,9 +183,10 @@ if submitted:
         st.subheader("Implementation Tenants")
         if impls:
             for label, url in impls:
-                # keep full URL text, clickable
-                st.markdown(f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
-                            unsafe_allow_html=True)
+                st.markdown(
+                    f"{label} <a href='{url}' target='_blank' rel='noopener'>{url}</a>",
+                    unsafe_allow_html=True
+                )
                 urls_impl.append((label.strip(" :"), url))
         else:
             st.text("No implementation tenants found.")
@@ -175,7 +194,7 @@ if submitted:
         st.warning("No Sandbox URL found for this Data Center.")
 
     # -------------------------------------------------
-    # Slack-ready message with copy button (keeps Slack links clickable)
+    # Slack-ready message with reliable copy
     # -------------------------------------------------
     lines = [f"*Workday URLs for `{tenant_id}`*"]
     for label, url in urls_core:
@@ -187,12 +206,13 @@ if submitted:
     slack_message = "\n".join(lines)
 
     st.subheader("Share to Slack")
-    st.caption("Use the copy icon to copy the formatted message")
-    st.code(slack_message, language=None)
+    st.caption("Review or tweak, then click Copy")
+    st.text_area("Slack message", slack_message, height=220, key="slack_text_area")
+    copy_to_clipboard_button("Copy to clipboard", st.session_state.slack_text_area, key="copy-slack")
 
     st.download_button(
         "Download as .txt",
-        data=slack_message,
+        data=st.session_state.slack_text_area,
         file_name=f"workday_urls_{tenant_id}.txt",
         mime="text/plain",
     )
