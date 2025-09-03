@@ -214,7 +214,7 @@ if submitted:
         # Copy all URLs
         st.subheader("Copy All URLs")
         all_urls_text = "\n".join(all_urls)
-        copy_button(all_urls_text, "📋 Copy All URLs", "all")
+        st.text_area("Copy All URLs:", value=all_urls_text, height=150, key="all_urls_input", help="Select all (Ctrl+A) and copy (Ctrl+C)")
         
     else:
         st.warning("No Sandbox URL found for this Data Center.")
