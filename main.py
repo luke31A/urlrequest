@@ -107,19 +107,19 @@ def find_sandbox_url(data_center: str, tenant_id: str):
     not a formatted URL. (tenant_id is unused here to maintain compatibility.)
     """
     sandbox_urls = {
-        "Data Center 1": "https://impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 3": "https://wd3-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 5": "https://wd5-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 10": "https://wd10-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 1": "https://wd2-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 3": "https://wd3-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 5": "https://wd5-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 10": "https://wd10-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
         "Data Center 12": "https://impl.wd12.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 102": "https://wd102-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 103": "https://wd103-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 104": "https://wd104-impl.workdaygov.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 105": "https://wd105-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 501": "https://wd501-impl.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 503": "https://impl.wd503.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 108": "https://impl.wd108.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
-        "Data Center 107": "https://impl.wd107.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 102": "https://wd102-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 103": "https://wd103-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 104": "https://wd104-impl-identity.workdaygov.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 105": "https://wd105-impl-identity.workday.com/wday/authgwy/{id}/login.htmld?redirect=n",
+        "Data Center 501": "https://impl-identity.wd501.myworkday.com/wday/authgwy/{id}/upc/login?redirect=n",
+        "Data Center 503": "https://impl-identity.wd503.myworkday.com/wday/authgwy/{id}/upc/login?redirect=n",
+        "Data Center 108": "https://impl-identity.wd108.myworkday.com/wday/authgwy/{id}/upc/login?redirect=n",
+        "Data Center 107": "https://impl-identity.wd107.myworkday.com/wday/authgwy/{id}/upc/login?redirect=n",
     }
     return sandbox_urls.get(data_center, None)
 
