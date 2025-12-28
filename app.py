@@ -37,38 +37,43 @@ def generate_tenant_id_suggestions(original_id: str) -> List[str]:
     if alphanumeric != cleaned and alphanumeric:
         suggestions.add(alphanumeric)
     
-    # Replace spaces with hyphens/underscores
-    suggestions.add(cleaned.replace(" ", "-"))
-    suggestions.add(cleaned.replace(" ", "_"))
-    
     # Remove common suffixes
     common_suffixes = ['corp', 'corporation', 'company', 'inc', 'incorporated', 
                        'llc', 'ltd', 'limited', 'group', 'international']
     for suffix in common_suffixes:
         if cleaned.endswith(f" {suffix}"):
-            suggestions.add(cleaned.replace(f" {suffix}", ""))
+            base = cleaned.replace(f" {suffix}", "").replace(" ", "")
+            suggestions.add(base)
         if cleaned.endswith(suffix) and len(cleaned) > len(suffix):
-            suggestions.add(cleaned[:-len(suffix)])
+            base = cleaned[:-len(suffix)].replace(" ", "")
+            suggestions.add(base)
     
-    # Common abbreviations
-    suggestions.add(cleaned.replace("corporation", "corp"))
-    suggestions.add(cleaned.replace("company", "co"))
-    suggestions.add(cleaned.replace("incorporated", "inc"))
-    suggestions.add(cleaned.replace("international", "intl"))
+    # Common abbreviations - always remove spaces
+    if "corporation" in cleaned:
+        suggestions.add(cleaned.replace("corporation", "corp").replace(" ", ""))
+    if "company" in cleaned:
+        suggestions.add(cleaned.replace("company", "co").replace(" ", ""))
+    if "incorporated" in cleaned:
+        suggestions.add(cleaned.replace("incorporated", "inc").replace(" ", ""))
+    if "international" in cleaned:
+        suggestions.add(cleaned.replace("international", "intl").replace(" ", ""))
     
     # Remove "the" prefix
     if cleaned.startswith("the "):
-        suggestions.add(cleaned[4:])
+        suggestions.add(cleaned[4:].replace(" ", ""))
     
     # Remove trailing numbers
     if re.search(r'\d+$', cleaned):
-        suggestions.add(re.sub(r'\d+$', '', cleaned).rstrip())
+        suggestions.add(re.sub(r'\d+$', '', cleaned).replace(" ", "").rstrip())
     
     # Multi-word patterns
     words = cleaned.split()
     if len(words) > 1:
+        # All lowercase concatenated
         suggestions.add(''.join(words))
+        # First word only
         suggestions.add(words[0])
+        # Acronym
         if len(words) <= 5:
             acronym = ''.join(word[0] for word in words if word)
             if len(acronym) >= 2:
@@ -76,14 +81,15 @@ def generate_tenant_id_suggestions(original_id: str) -> List[str]:
     
     # Handle "&"
     if "&" in cleaned:
-        suggestions.add(cleaned.replace("&", "and"))
-        suggestions.add(cleaned.replace("&", ""))
-        suggestions.add(cleaned.replace(" & ", ""))
+        suggestions.add(cleaned.replace("&", "and").replace(" ", ""))
+        suggestions.add(cleaned.replace("&", "").replace(" ", ""))
+        suggestions.add(cleaned.replace(" & ", "").replace(" ", ""))
     
-    # Filter and sort
+    # Filter: remove original, empty strings, short strings, and anything with spaces or punctuation
     suggestions.discard(cleaned)
     suggestions.discard(original_id.lower())
-    suggestions = {s for s in suggestions if s and len(s) >= 2}
+    # Only keep suggestions that are alphanumeric (no spaces, no punctuation)
+    suggestions = {s for s in suggestions if s and len(s) >= 2 and s.isalnum()}
     
     return sorted(suggestions, key=lambda x: (len(x), x))[:8]
 
@@ -274,8 +280,6 @@ if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False
-if "auto_search_id" not in st.session_state:
-    st.session_state.auto_search_id = None
 
 # -------------------------------------------------
 # Sidebar: recent searches
@@ -322,13 +326,8 @@ with st.form(key="search_form", clear_on_submit=False):
     st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     submitted = st.form_submit_button("Find URLs")
 
-# Check if we should auto-run a search from a suggestion click
-if st.session_state.auto_search_id:
-    submitted = True
-    tenant_id = st.session_state.auto_search_id
-    st.session_state.prefill = tenant_id
-    st.session_state.auto_search_id = None
-elif st.session_state.run_from_history and not submitted:
+# Handle history click
+if st.session_state.run_from_history and not submitted:
     submitted = True
     tenant_id = st.session_state.prefill
     st.session_state.run_from_history = False
@@ -364,14 +363,10 @@ if submitted:
         if suggestions:
             st.warning("🤔 Couldn't find that tenant ID. Here are some variations to try:")
             
-            # Display suggestions as clickable buttons
-            cols = st.columns(4)
-            for idx, suggestion in enumerate(suggestions):
-                with cols[idx % 4]:
-                    if st.button(f"`{suggestion}`", key=f"sugg_{idx}", use_container_width=True):
-                        # Set the suggestion to auto-search on next rerun
-                        st.session_state.auto_search_id = suggestion
-                        st.rerun()
+            # Display suggestions as text with code formatting
+            suggestion_text = ", ".join([f"`{s}`" for s in suggestions])
+            st.markdown(suggestion_text)
+            st.caption("Copy and paste one of the suggestions above into the search box.")
         
         # Show helpful tips
         with st.expander("💡 Tips for finding the correct Tenant ID"):
@@ -395,9 +390,6 @@ if submitted:
     if len(st.session_state.search_history) > 10:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
-    
-    # Clear auto_search_id after successful search
-    st.session_state.auto_search_id = None
 
     st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
