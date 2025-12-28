@@ -67,11 +67,8 @@ def generate_tenant_id_suggestions(original_id: str) -> List[str]:
     # Multi-word patterns
     words = cleaned.split()
     if len(words) > 1:
-        # All lowercase concatenated
         suggestions.add(''.join(words))
-        # First word only
         suggestions.add(words[0])
-        # Acronym
         if len(words) <= 5:
             acronym = ''.join(word[0] for word in words if word)
             if len(acronym) >= 2:
@@ -172,24 +169,6 @@ st.markdown(
         width: 100%;
         background: #22c55e; /* green */
         border-radius: 6px;
-      }}
-      
-      /* Suggestion button styles */
-      .suggestion-btn {{
-        display: inline-block;
-        padding: 6px 12px;
-        margin: 4px;
-        background: #f0f2f6;
-        border: 1px solid #d0d0d0;
-        border-radius: 6px;
-        cursor: pointer;
-        font-family: 'Source Code Pro', monospace;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-      }}
-      .suggestion-btn:hover {{
-        background: #e0e2e6;
-        border-color: #0d6efd;
       }}
     </style>
     <div class="topbar">
@@ -295,10 +274,6 @@ if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False
-if "show_suggestions" not in st.session_state:
-    st.session_state.show_suggestions = False
-if "suggestions" not in st.session_state:
-    st.session_state.suggestions = []
 
 # -------------------------------------------------
 # Sidebar: recent searches
@@ -360,10 +335,6 @@ if submitted:
     if not tenant_id:
         st.warning("Enter a tenant ID first.")
         st.stop()
-
-    # Reset suggestions
-    st.session_state.show_suggestions = False
-    st.session_state.suggestions = []
 
     # Add to history (initially as failed, will update if successful)
     st.session_state.search_history[tenant_id] = False
