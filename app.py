@@ -1,4 +1,4 @@
-
+#Comment - Written with Claude off original main.py from Luke Adams
 
 import base64
 import json
@@ -318,15 +318,12 @@ with st.form(key="search_form", clear_on_submit=False):
     st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     submitted = st.form_submit_button("Find URLs")
 
-# Clear prefill after form renders
-if not st.session_state.run_from_history:
-    st.session_state.prefill = ""
-
-# Handle history click
+# Handle history click or suggestion click
 if st.session_state.run_from_history:
     submitted = True
-    tenant_id = current_prefill
+    tenant_id = st.session_state.prefill
     st.session_state.run_from_history = False
+    # Don't clear prefill yet - let it show in the text box after rerun
 
 # -------------------------------------------------
 # Main search logic
@@ -388,6 +385,9 @@ if submitted:
     if len(st.session_state.search_history) > 10:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
+    
+    # Clear prefill after successful search
+    st.session_state.prefill = ""
 
     st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
