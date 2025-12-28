@@ -50,73 +50,72 @@ def _build_session() -> requests.Session:
 _SESSION = _build_session()
 
 
-def check_redirect(url: str, timeout: float = 1.5) -> bool:
+def check_redirect(url: str, timeout: float = 2.0) -> bool:
     """
     Returns True if the URL is considered valid.
     A URL is invalid if:
     1. The final resolved URL equals INVALID_URL, OR
-    2. The response contains JSON with "failover": false, OR
-    3. The response contains the error message pattern for invalid tenants
+    2. The response contains JSON with "failover": false
+    
+    ALWAYS uses GET request to check response body for JSON error patterns.
     """
     invalid_norm = _normalize_url(INVALID_URL)
 
     try:
-        # First try HEAD request for efficiency
-        r = _SESSION.head(url, allow_redirects=True, timeout=timeout)
+        # Use GET request to be able to check response body
+        # Set stream=False to read the full response
+        r = _SESSION.get(url, allow_redirects=True, timeout=timeout, stream=False)
         
         # Check for redirect to invalid-url
         if _normalize_url(r.url) == invalid_norm:
             return False
-            
-        # If we get a good status, likely valid
-        if 200 <= r.status_code < 300:
-            return True
-            
-        # If bad status, might be invalid
+        
+        # Check for bad HTTP status
         if r.status_code >= 400:
             return False
-
-    except requests.RequestException:
-        pass  # Fall through to GET request
-
-    # Fallback: Try GET to check response body for JSON error patterns
-    try:
-        r = _SESSION.get(url, allow_redirects=True, timeout=timeout)
         
-        # Check for redirect to invalid-url
-        if _normalize_url(r.url) == invalid_norm:
-            return False
+        # Check content type and parse JSON if applicable
+        content_type = r.headers.get('Content-Type', '').lower()
         
-        # Check for JSON error response with "failover": false
-        content_type = r.headers.get('Content-Type', '')
-        if 'application/json' in content_type:
+        # If it's JSON, check for error patterns
+        if 'application/json' in content_type or 'text/json' in content_type:
             try:
                 data = r.json()
+                
                 # Check for the specific failover: false pattern
-                if data.get('failover') is False:
+                if 'failover' in data and data['failover'] is False:
                     return False
-                # Also check for error messages
+                
+                # Check for error messages
                 if 'errorMessage' in data:
                     return False
-            except (ValueError, AttributeError):
+                    
+            except (ValueError, AttributeError, TypeError):
+                # If JSON parsing fails, continue with text check
                 pass
         
-        # Check response text for error patterns (backup check)
+        # Fallback: Check raw text for error patterns
         if r.text:
-            text_lower = r.text.lower()
-            if '"failover":false' in text_lower or '"failover": false' in text_lower:
-                return False
-            if 'auth gateway error' in text_lower:
-                return False
+            text_content = r.text.strip()
+            
+            # Check if response starts with JSON-like error
+            if text_content.startswith('{'):
+                # Try to detect failover:false pattern even if content-type is wrong
+                if '"failover":false' in text_content or '"failover": false' in text_content:
+                    return False
+                if '"errorMessage"' in text_content:
+                    return False
         
+        # If we got here with 2xx status and no error patterns, it's valid
         return 200 <= r.status_code < 300
         
-    except requests.RequestException:
+    except requests.RequestException as e:
+        # Network errors mean the URL is not accessible
         return False
 
 
 # Optional alias (in case you started importing this name elsewhere)
-def is_valid_workday_url(url: str, timeout: float = 1.5) -> bool:
+def is_valid_workday_url(url: str, timeout: float = 2.0) -> bool:
     return check_redirect(url, timeout=timeout)
 
 
