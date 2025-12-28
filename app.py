@@ -366,9 +366,20 @@ if submitted:
             for idx, suggestion in enumerate(suggestions):
                 with cols[idx % 4]:
                     if st.button(f"`{suggestion}`", key=f"sugg_{idx}", use_container_width=True):
-                        st.session_state.prefill = suggestion
-                        st.session_state.run_from_history = True
-                        st.rerun()
+                        # Run search immediately with this suggestion
+                        st.session_state.search_history[suggestion] = False
+                        
+                        # Show spinner
+                        with st.spinner(f"Searching for {suggestion}..."):
+                            data_center_sugg, production_url_sugg = find_production_url(suggestion)
+                        
+                        if not production_url_sugg:
+                            st.error(f"❌ '{suggestion}' also not found.")
+                        else:
+                            # Success! Prefill and trigger a clean rerun
+                            st.session_state.prefill = suggestion
+                            st.session_state.run_from_history = True
+                            st.rerun()
         
         # Show helpful tips
         with st.expander("💡 Tips for finding the correct Tenant ID"):
