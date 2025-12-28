@@ -14,6 +14,7 @@ from __future__ import annotations
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 INVALID_URL = "https://community.workday.com/invalid-url?dev=1"
 
@@ -120,6 +121,10 @@ def is_valid_workday_url(url: str, timeout: float = 2.0) -> bool:
 
 
 def find_production_url(tenant_id: str):
+    """
+    Find production URL by checking all data centers in parallel.
+    Returns (data_center_name, url) if found, otherwise (None, None).
+    """
     data_centers = {
         "Data Center 1": "https://www.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
         "Data Center 3": "https://wd3.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
@@ -136,10 +141,26 @@ def find_production_url(tenant_id: str):
         "Data Center 107": "https://wd107.myworkday.com/wday/authgwy/{id}/login.htmld?redirect=n",
     }
 
-    for data_center, url_template in data_centers.items():
-        url = url_template.format(id=tenant_id)
-        if check_redirect(url):
-            return data_center, url
+    # Check all data centers in parallel
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        # Submit all checks
+        future_to_dc = {
+            executor.submit(check_redirect, url_template.format(id=tenant_id)): (data_center, url_template)
+            for data_center, url_template in data_centers.items()
+        }
+        
+        # Return the first successful match
+        for future in as_completed(future_to_dc):
+            data_center, url_template = future_to_dc[future]
+            try:
+                if future.result():
+                    # Cancel remaining futures for efficiency
+                    for f in future_to_dc:
+                        f.cancel()
+                    return data_center, url_template.format(id=tenant_id)
+            except Exception:
+                # If one check fails, continue with others
+                continue
 
     return None, None
 
@@ -178,10 +199,35 @@ def find_cc_url(sandbox_url_template: str):
 
 
 def find_implementation_tenants(sandbox_url_template: str, tenant_id: str, max_impl: int = 20):
+    """
+    Find implementation tenants in parallel for much faster scanning.
+    """
     implementation_tenants = []
+    
+    # Prepare all URLs to check
+    urls_to_check = []
     for i in range(1, max_impl + 1):
         impl_id = f"{tenant_id}{i}"
         url = sandbox_url_template.format(id=impl_id)
-        if check_redirect(url):
-            implementation_tenants.append((f"IMPL{i}:", url))
+        urls_to_check.append((i, impl_id, url))
+    
+    # Check all URLs in parallel
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_impl = {
+            executor.submit(check_redirect, url): (i, impl_id, url)
+            for i, impl_id, url in urls_to_check
+        }
+        
+        for future in as_completed(future_to_impl):
+            i, impl_id, url = future_to_impl[future]
+            try:
+                if future.result():
+                    implementation_tenants.append((f"IMPL{i}:", url))
+            except Exception:
+                # Skip failed checks
+                continue
+    
+    # Sort by IMPL number to maintain order
+    implementation_tenants.sort(key=lambda x: int(x[0].replace("IMPL", "").replace(":", "")))
+    
     return implementation_tenants
