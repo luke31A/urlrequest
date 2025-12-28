@@ -274,6 +274,8 @@ if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False
+if "last_failed_search" not in st.session_state:
+    st.session_state.last_failed_search = None
 
 # -------------------------------------------------
 # Sidebar: recent searches
@@ -311,19 +313,20 @@ st.info(
 # -------------------------------------------------
 # Input form
 # -------------------------------------------------
+# Check if we should use a prefilled value
+form_value = st.session_state.prefill if st.session_state.prefill else ""
+
 with st.form(key="search_form", clear_on_submit=False):
-    current_prefill = st.session_state.prefill
-    tenant_id = st.text_input("Tenant ID", value=current_prefill)
+    tenant_id = st.text_input("Tenant ID", value=form_value, key="tenant_input")
     max_impl = st.slider("Max IMPL index to probe", min_value=5, max_value=50, value=10, step=1)
     st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     submitted = st.form_submit_button("Find URLs")
 
-# Handle history click or suggestion click
-if st.session_state.run_from_history:
+# Handle suggestion or history click - auto-submit the form
+if st.session_state.run_from_history and not submitted:
     submitted = True
     tenant_id = st.session_state.prefill
     st.session_state.run_from_history = False
-    # Don't clear prefill yet - let it show in the text box after rerun
 
 # -------------------------------------------------
 # Main search logic
@@ -346,6 +349,11 @@ if submitted:
 
     if not production_url:
         st.error("❌ No Production URL found.")
+        
+        # Store the failed search
+        st.session_state.last_failed_search = tenant_id
+        # Clear prefill so it doesn't interfere
+        st.session_state.prefill = ""
         
         # Generate suggestions
         suggestions = generate_tenant_id_suggestions(tenant_id)
@@ -388,6 +396,7 @@ if submitted:
     
     # Clear prefill after successful search
     st.session_state.prefill = ""
+    st.session_state.last_failed_search = None
 
     st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
