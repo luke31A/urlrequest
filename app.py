@@ -328,6 +328,16 @@ if st.session_state.run_from_history:
     tenant_id = current_prefill
     st.session_state.run_from_history = False
 
+
+# -------------------------------------------------
+# TEST - Add this here (remove after debugging) LUKE ADAMS
+# -------------------------------------------------
+if st.button("Test Suggestions"):
+    test_suggestions = generate_tenant_id_suggestions("Acme Corporation")
+    st.write("Suggestions:", test_suggestions)
+    st.write("Number of suggestions:", len(test_suggestions))
+
+
 # -------------------------------------------------
 # Main search logic
 # -------------------------------------------------
