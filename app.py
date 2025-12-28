@@ -381,8 +381,7 @@ if submitted:
             - Try the company name **without suffixes** like "Inc", "LLC", "Corporation"
             - Some companies use **abbreviations or acronyms**
             - The tenant ID is usually **lowercase**
-            - Try checking the Workday login URL your company uses
-            - Check with your **Workday administrator** if unsure
+            - Check in your **Zendesk** if unsure
             """)
         
         # Angry Pikachu at bottom
