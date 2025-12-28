@@ -4,8 +4,9 @@ Core logic for Workday URL discovery.
 
 UPDATED BEHAVIOR:
 - Redirects are allowed and expected.
-- A candidate URL is considered INVALID only if it ultimately resolves to:
-  https://community.workday.com/invalid-url?dev=1
+- A candidate URL is considered INVALID if it either:
+  1. Ultimately resolves to: https://community.workday.com/invalid-url?dev=1
+  2. Returns a JSON response with "failover": false
 """
 
 from __future__ import annotations
@@ -51,24 +52,67 @@ _SESSION = _build_session()
 
 def check_redirect(url: str, timeout: float = 1.5) -> bool:
     """
-    BACKWARDS-COMPATIBLE NAME.
-
     Returns True if the URL is considered valid.
-    A URL is invalid only if the final resolved URL equals INVALID_URL.
+    A URL is invalid if:
+    1. The final resolved URL equals INVALID_URL, OR
+    2. The response contains JSON with "failover": false, OR
+    3. The response contains the error message pattern for invalid tenants
     """
     invalid_norm = _normalize_url(INVALID_URL)
 
     try:
+        # First try HEAD request for efficiency
         r = _SESSION.head(url, allow_redirects=True, timeout=timeout)
-        return _normalize_url(r.url) != invalid_norm
+        
+        # Check for redirect to invalid-url
+        if _normalize_url(r.url) == invalid_norm:
+            return False
+            
+        # If we get a good status, likely valid
+        if 200 <= r.status_code < 300:
+            return True
+            
+        # If bad status, might be invalid
+        if r.status_code >= 400:
+            return False
 
     except requests.RequestException:
-        # Fallback: Some servers disallow HEAD. Try GET without downloading body.
-        try:
-            r = _SESSION.get(url, allow_redirects=True, timeout=timeout, stream=True)
-            return _normalize_url(r.url) != invalid_norm
-        except requests.RequestException:
+        pass  # Fall through to GET request
+
+    # Fallback: Try GET to check response body for JSON error patterns
+    try:
+        r = _SESSION.get(url, allow_redirects=True, timeout=timeout)
+        
+        # Check for redirect to invalid-url
+        if _normalize_url(r.url) == invalid_norm:
             return False
+        
+        # Check for JSON error response with "failover": false
+        content_type = r.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            try:
+                data = r.json()
+                # Check for the specific failover: false pattern
+                if data.get('failover') is False:
+                    return False
+                # Also check for error messages
+                if 'errorMessage' in data:
+                    return False
+            except (ValueError, AttributeError):
+                pass
+        
+        # Check response text for error patterns (backup check)
+        if r.text:
+            text_lower = r.text.lower()
+            if '"failover":false' in text_lower or '"failover": false' in text_lower:
+                return False
+            if 'auth gateway error' in text_lower:
+                return False
+        
+        return 200 <= r.status_code < 300
+        
+    except requests.RequestException:
+        return False
 
 
 # Optional alias (in case you started importing this name elsewhere)
