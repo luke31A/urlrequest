@@ -358,38 +358,23 @@ if submitted:
     prod_placeholder.empty()
 
     if not production_url:
-        st.error("❌ No Production URL found.")
-        
-        # Generate suggestions
-        suggestions = generate_tenant_id_suggestions(tenant_id)
-        
-        if suggestions:
-            st.warning("🤔 Couldn't find that tenant ID. Here are some variations to try:")
-            
-            # Display suggestions as clickable buttons
-            cols = st.columns(4)
-            for idx, suggestion in enumerate(suggestions):
-                with cols[idx % 4]:
-                    if st.button(f"`{suggestion}`", key=f"sugg_{idx}", use_container_width=True):
-                        st.session_state.prefill = suggestion
-                        st.session_state.run_from_history = True
-                        st.rerun()
-        
-        # Show helpful tips
-        with st.expander("💡 Tips for finding the correct Tenant ID"):
-            st.markdown("""
-            - **Remove all spaces** (e.g., "Acme Corp" → "acmecorp")
-            - **Remove special characters** and punctuation
-            - Try the company name **without suffixes** like "Inc", "LLC", "Corporation"
-            - Some companies use **abbreviations or acronyms**
-            - The tenant ID is usually **lowercase**
-            - Try checking the Workday login URL your company uses
-            - Check with your **Workday administrator** if unsure
-            """)
-        
-        # Angry Pikachu at bottom
-        st.image("pika_angry.png", width=150)
-        st.stop()
+    st.error("❌ No Production URL found.")
+    st.write("TEST: This code is running!")
+    st.write(f"Tenant ID was: {tenant_id}")
+    
+    suggestions = generate_tenant_id_suggestions(tenant_id)
+    st.write(f"Generated {len(suggestions)} suggestions")
+    st.write(f"Suggestions list: {suggestions}")
+    
+    if suggestions:
+        st.write("Entering suggestions display block")
+        for idx, suggestion in enumerate(suggestions):
+            st.write(f"Suggestion {idx}: {suggestion}")
+    else:
+        st.write("No suggestions generated!")
+    
+    st.image("pika_angry.png", width=150)
+    st.stop()
 
     # Mark as successful
     st.session_state.search_history[tenant_id] = True
