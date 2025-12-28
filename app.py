@@ -274,8 +274,8 @@ if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False
-if "last_failed_search" not in st.session_state:
-    st.session_state.last_failed_search = None
+if "auto_search_id" not in st.session_state:
+    st.session_state.auto_search_id = None
 
 # -------------------------------------------------
 # Sidebar: recent searches
@@ -322,8 +322,13 @@ with st.form(key="search_form", clear_on_submit=False):
     st.caption("Tip: Max IMPL index is how deep we check IMPL-XX. Increase only if you expect many implementation tenants.")
     submitted = st.form_submit_button("Find URLs")
 
-# Handle suggestion or history click - auto-submit the form
-if st.session_state.run_from_history and not submitted:
+# Check if we should auto-run a search from a suggestion click
+if st.session_state.auto_search_id:
+    submitted = True
+    tenant_id = st.session_state.auto_search_id
+    st.session_state.prefill = tenant_id
+    st.session_state.auto_search_id = None
+elif st.session_state.run_from_history and not submitted:
     submitted = True
     tenant_id = st.session_state.prefill
     st.session_state.run_from_history = False
@@ -350,8 +355,6 @@ if submitted:
     if not production_url:
         st.error("❌ No Production URL found.")
         
-        # Store the failed search
-        st.session_state.last_failed_search = tenant_id
         # Clear prefill so it doesn't interfere
         st.session_state.prefill = ""
         
@@ -366,20 +369,9 @@ if submitted:
             for idx, suggestion in enumerate(suggestions):
                 with cols[idx % 4]:
                     if st.button(f"`{suggestion}`", key=f"sugg_{idx}", use_container_width=True):
-                        # Run search immediately with this suggestion
-                        st.session_state.search_history[suggestion] = False
-                        
-                        # Show spinner
-                        with st.spinner(f"Searching for {suggestion}..."):
-                            data_center_sugg, production_url_sugg = find_production_url(suggestion)
-                        
-                        if not production_url_sugg:
-                            st.error(f"❌ '{suggestion}' also not found.")
-                        else:
-                            # Success! Prefill and trigger a clean rerun
-                            st.session_state.prefill = suggestion
-                            st.session_state.run_from_history = True
-                            st.rerun()
+                        # Set the suggestion to auto-search on next rerun
+                        st.session_state.auto_search_id = suggestion
+                        st.rerun()
         
         # Show helpful tips
         with st.expander("💡 Tips for finding the correct Tenant ID"):
@@ -405,9 +397,8 @@ if submitted:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
     
-    # Clear prefill after successful search
-    st.session_state.prefill = ""
-    st.session_state.last_failed_search = None
+    # Clear auto_search_id after successful search
+    st.session_state.auto_search_id = None
 
     st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
