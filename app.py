@@ -1,8 +1,10 @@
-#Comment - Written with Claude off original main.py from Luke Adams
+
 
 import base64
 import json
+import re
 from pathlib import Path
+from typing import List
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -13,6 +15,80 @@ from main import (
     find_cc_url,
     find_implementation_tenants,
 )
+
+# -------------------------------------------------
+# Tenant ID Suggestion Functions
+# -------------------------------------------------
+def generate_tenant_id_suggestions(original_id: str) -> List[str]:
+    """Generate intelligent variations of a tenant ID."""
+    suggestions = set()
+    cleaned = original_id.strip().lower()
+    
+    if not cleaned:
+        return []
+    
+    # Remove all spaces
+    no_spaces = cleaned.replace(" ", "")
+    if no_spaces != cleaned:
+        suggestions.add(no_spaces)
+    
+    # Remove special characters (keep only alphanumeric)
+    alphanumeric = re.sub(r'[^a-z0-9]', '', cleaned)
+    if alphanumeric != cleaned and alphanumeric:
+        suggestions.add(alphanumeric)
+    
+    # Replace spaces with hyphens/underscores
+    suggestions.add(cleaned.replace(" ", "-"))
+    suggestions.add(cleaned.replace(" ", "_"))
+    
+    # Remove common suffixes
+    common_suffixes = ['corp', 'corporation', 'company', 'inc', 'incorporated', 
+                       'llc', 'ltd', 'limited', 'group', 'international']
+    for suffix in common_suffixes:
+        if cleaned.endswith(f" {suffix}"):
+            suggestions.add(cleaned.replace(f" {suffix}", ""))
+        if cleaned.endswith(suffix) and len(cleaned) > len(suffix):
+            suggestions.add(cleaned[:-len(suffix)])
+    
+    # Common abbreviations
+    suggestions.add(cleaned.replace("corporation", "corp"))
+    suggestions.add(cleaned.replace("company", "co"))
+    suggestions.add(cleaned.replace("incorporated", "inc"))
+    suggestions.add(cleaned.replace("international", "intl"))
+    
+    # Remove "the" prefix
+    if cleaned.startswith("the "):
+        suggestions.add(cleaned[4:])
+    
+    # Remove trailing numbers
+    if re.search(r'\d+$', cleaned):
+        suggestions.add(re.sub(r'\d+$', '', cleaned).rstrip())
+    
+    # Multi-word patterns
+    words = cleaned.split()
+    if len(words) > 1:
+        # All lowercase concatenated
+        suggestions.add(''.join(words))
+        # First word only
+        suggestions.add(words[0])
+        # Acronym
+        if len(words) <= 5:
+            acronym = ''.join(word[0] for word in words if word)
+            if len(acronym) >= 2:
+                suggestions.add(acronym)
+    
+    # Handle "&"
+    if "&" in cleaned:
+        suggestions.add(cleaned.replace("&", "and"))
+        suggestions.add(cleaned.replace("&", ""))
+        suggestions.add(cleaned.replace(" & ", ""))
+    
+    # Filter and sort
+    suggestions.discard(cleaned)
+    suggestions.discard(original_id.lower())
+    suggestions = {s for s in suggestions if s and len(s) >= 2}
+    
+    return sorted(suggestions, key=lambda x: (len(x), x))[:8]
 
 # -------------------------------------------------
 # Page config
@@ -96,6 +172,24 @@ st.markdown(
         width: 100%;
         background: #22c55e; /* green */
         border-radius: 6px;
+      }}
+      
+      /* Suggestion button styles */
+      .suggestion-btn {{
+        display: inline-block;
+        padding: 6px 12px;
+        margin: 4px;
+        background: #f0f2f6;
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: 'Source Code Pro', monospace;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }}
+      .suggestion-btn:hover {{
+        background: #e0e2e6;
+        border-color: #0d6efd;
       }}
     </style>
     <div class="topbar">
@@ -201,6 +295,10 @@ if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
     st.session_state.run_from_history = False
+if "show_suggestions" not in st.session_state:
+    st.session_state.show_suggestions = False
+if "suggestions" not in st.session_state:
+    st.session_state.suggestions = []
 
 # -------------------------------------------------
 # Sidebar: recent searches
@@ -263,6 +361,10 @@ if submitted:
         st.warning("Enter a tenant ID first.")
         st.stop()
 
+    # Reset suggestions
+    st.session_state.show_suggestions = False
+    st.session_state.suggestions = []
+
     # Add to history (initially as failed, will update if successful)
     st.session_state.search_history[tenant_id] = False
 
@@ -275,7 +377,35 @@ if submitted:
     prod_placeholder.empty()
 
     if not production_url:
-        st.error("No Production URL found.")
+        st.error("❌ No Production URL found.")
+        
+        # Generate suggestions
+        suggestions = generate_tenant_id_suggestions(tenant_id)
+        
+        if suggestions:
+            st.warning("🤔 Couldn't find that tenant ID. Here are some variations to try:")
+            
+            # Display suggestions as clickable buttons
+            cols = st.columns(4)
+            for idx, suggestion in enumerate(suggestions):
+                with cols[idx % 4]:
+                    if st.button(f"`{suggestion}`", key=f"sugg_{idx}", use_container_width=True):
+                        st.session_state.prefill = suggestion
+                        st.session_state.run_from_history = True
+                        st.rerun()
+        
+        # Show helpful tips
+        with st.expander("💡 Tips for finding the correct Tenant ID"):
+            st.markdown("""
+            - **Remove all spaces** (e.g., "Acme Corp" → "acmecorp")
+            - **Remove special characters** and punctuation
+            - Try the company name **without suffixes** like "Inc", "LLC", "Corporation"
+            - Some companies use **abbreviations or acronyms**
+            - The tenant ID is usually **lowercase**
+            - Try checking the Workday login URL your company uses
+            - Check with your **Workday administrator** if unsure
+            """)
+        
         # Angry Pikachu at bottom
         st.image("pika_angry.png", width=150)
         st.stop()
