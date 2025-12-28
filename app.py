@@ -357,7 +357,21 @@ if submitted:
         # Clear prefill so it doesn't interfere
         st.session_state.prefill = ""
         
-        # Generate suggestions
+        # First, check for similar successful tenant IDs
+        similar_tenants = get_similar_successful_tenants(
+            tenant_id, 
+            st.session_state.search_history,
+            threshold=0.5,
+            max_suggestions=3
+        )
+        
+        if similar_tenants:
+            st.info("💡 Found similar tenant IDs that worked before:")
+            similar_text = ", ".join([f"`{s}`" for s in similar_tenants])
+            st.markdown(similar_text)
+            st.caption("These tenant IDs worked previously and are similar to your search.")
+        
+        # Generate standard suggestions
         suggestions = generate_tenant_id_suggestions(tenant_id)
         
         if suggestions:
