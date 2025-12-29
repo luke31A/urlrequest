@@ -17,6 +17,29 @@ from main import (
 )
 
 # -------------------------------------------------
+# Persistent Storage Functions
+# -------------------------------------------------
+HISTORY_FILE = "search_history.json"
+
+def load_search_history() -> dict:
+    """Load search history from file."""
+    try:
+        if Path(HISTORY_FILE).exists():
+            with open(HISTORY_FILE, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading history: {e}")
+    return {}
+
+def save_search_history(history: dict):
+    """Save search history to file."""
+    try:
+        with open(HISTORY_FILE, 'w') as f:
+            json.dump(history, f, indent=2)
+    except Exception as e:
+        print(f"Error saving history: {e}")
+
+# -------------------------------------------------
 # Tenant ID Suggestion Functions
 # -------------------------------------------------
 def calculate_similarity(str1: str, str2: str) -> float:
@@ -318,7 +341,8 @@ def show_progress_complete(placeholder, label_text: str):
 # Session state - Simple format
 # -------------------------------------------------
 if "search_history" not in st.session_state:
-    st.session_state.search_history = {}  # {tenant_id: success_bool}
+    # Load from file on first run
+    st.session_state.search_history = load_search_history()
 if "prefill" not in st.session_state:
     st.session_state.prefill = ""
 if "run_from_history" not in st.session_state:
@@ -345,6 +369,7 @@ with st.sidebar:
         if st.button("Clear History", type="secondary", use_container_width=True):
             st.session_state.search_history = {}
             st.session_state.prefill = ""
+            save_search_history({})  # Clear the saved file too
             st.rerun()
     else:
         st.caption("No searches yet")
@@ -385,6 +410,7 @@ if submitted:
 
     # Add to history (initially as failed, will update if successful)
     st.session_state.search_history[tenant_id] = False
+    save_search_history(st.session_state.search_history)  # Save immediately
 
     # Custom spinner for production lookup
     prod_placeholder = st.empty()
@@ -447,6 +473,9 @@ if submitted:
     if len(st.session_state.search_history) > 10:
         oldest_key = next(iter(st.session_state.search_history))
         del st.session_state.search_history[oldest_key]
+    
+    # Save to file after successful search
+    save_search_history(st.session_state.search_history)
 
     st.subheader(f"Results for: {tenant_id}")
     st.metric(label="Data Center", value=data_center)
@@ -495,3 +524,9 @@ if submitted:
         st.subheader("All URLs Summary")
         all_urls_text = "\n".join(all_urls)
         st.code(all_urls_text, language=None)
+        
+    else:
+        st.warning("No Sandbox URL found for this Data Center.")
+    
+    # Happy Pikachu at bottom on success
+    st.image("pikachu_happy.png", width=150)
