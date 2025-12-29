@@ -19,6 +19,49 @@ from main import (
 # -------------------------------------------------
 # Tenant ID Suggestion Functions
 # -------------------------------------------------
+def calculate_similarity(str1: str, str2: str) -> float:
+    """Calculate similarity between two strings (0.0 to 1.0)."""
+    str1, str2 = str1.lower(), str2.lower()
+    
+    # Exact match
+    if str1 == str2:
+        return 1.0
+    
+    # One contains the other
+    if str1 in str2 or str2 in str1:
+        return 0.9
+    
+    # Calculate Levenshtein-like similarity (simple version)
+    # Count matching characters
+    matches = sum(c1 == c2 for c1, c2 in zip(str1, str2))
+    max_len = max(len(str1), len(str2))
+    
+    if max_len == 0:
+        return 0.0
+    
+    return matches / max_len
+
+def get_similar_successful_tenants(search_term: str, history: dict, threshold: float = 0.5, max_suggestions: int = 3) -> List[str]:
+    """Find successful tenant IDs similar to the search term."""
+    if not search_term or not history:
+        return []
+    
+    # Get only successful searches
+    successful = [tid for tid, success in history.items() if success]
+    
+    if not successful:
+        return []
+    
+    # Calculate similarity scores
+    scores = [(tid, calculate_similarity(search_term, tid)) for tid in successful]
+    
+    # Filter by threshold and sort by score
+    similar = [(tid, score) for tid, score in scores if score >= threshold]
+    similar.sort(key=lambda x: x[1], reverse=True)
+    
+    # Return top matches (tid only)
+    return [tid for tid, score in similar[:max_suggestions]]
+
 def generate_tenant_id_suggestions(original_id: str) -> List[str]:
     """Generate intelligent variations of a tenant ID."""
     suggestions = set()
@@ -452,9 +495,3 @@ if submitted:
         st.subheader("All URLs Summary")
         all_urls_text = "\n".join(all_urls)
         st.code(all_urls_text, language=None)
-        
-    else:
-        st.warning("No Sandbox URL found for this Data Center.")
-    
-    # Happy Pikachu at bottom on success
-    st.image("pikachu_happy.png", width=150)
